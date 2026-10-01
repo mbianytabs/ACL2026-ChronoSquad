@@ -41,4 +41,4 @@ Node.js · Express · express-session · bcryptjs · HTML/CSS/JavaScript · JSON
 
 ## Team
 
-Manuel · Giovana · Navec · Farid · *(5th member)*
+Manuel · Giovana · Navec · Farid · Kaoutar . Youssef
