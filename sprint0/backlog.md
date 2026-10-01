@@ -6,25 +6,10 @@
 
 ---
 
-## 1. Product backlog (vue d'ensemble)
+## 1. Product backlog
 
-| ID | User story | Priorité | Sprint prévu |
-|----|-----------|----------|--------------|
-| US01 | En tant que visiteur, je veux créer un compte pour pouvoir utiliser l'application | Haute | S0 |
-| US02 | En tant qu'utilisateur, je veux me connecter pour accéder à mes agendas | Haute | S0 |
-| US03 | En tant qu'utilisateur, je veux me déconnecter pour sécuriser ma session | Haute | S0 |
-| US04 | En tant qu'utilisateur, je veux créer un agenda | Haute | S0 |
-| US05 | En tant qu'utilisateur, je veux voir la liste de mes agendas | Haute | S0 |
-| US06 | En tant qu'utilisateur, je veux ajouter un rendez-vous dans un agenda | Haute | S1 |
-| US07 | En tant qu'utilisateur, je veux modifier un rendez-vous | Haute | S1 |
-| US08 | En tant qu'utilisateur, je veux supprimer un rendez-vous | Haute | S1 |
-| US09 | En tant qu'utilisateur, je veux afficher plusieurs agendas simultanément | Haute | S1 |
-| US10 | En tant qu'utilisateur, je veux créer des rendez-vous récurrents | Moyenne | S2 |
-| US11 | En tant qu'utilisateur, je veux rechercher un rendez-vous par critères (titre, date, lieu, agenda) | Moyenne | S2 |
-| US12 | En tant qu'utilisateur, je veux partager un agenda avec un autre utilisateur | Moyenne | S3 |
-| US13 | En tant qu'utilisateur, je veux annuler un partage | Moyenne | S3 |
-| US14 | En tant qu'utilisateur, je veux importer / exporter un agenda (JSON / .ics) | Moyenne | S3 |
-| US15 | En tant qu'utilisateur, je veux renommer / supprimer un agenda | Basse | S1 |
+Le product backlog complet (toutes les user stories du projet) est dans [`/product-backlog.md`](../product-backlog.md).
+Ce sprint couvre : **T00, US01, US02, US03, US04, US05**.
 
 ---
 
@@ -111,7 +96,7 @@ Estimation en points de complexité (1, 2, 3, 5, 8).
 
 | Membre | Rôle / éléments |
 |--------|-----------------|
-| Manuel | Scrum Master — T00 (serveur Express + `JsonStore`), README, intégration des branches, tag `v1` |
+| Manuel | Scrum Master: T00 (serveur Express + `JsonStore`), README, intégration des branches, tag `v1` |
 | Giovana | US01 / US02 / US03: back-end authentification (routes, sessions, `requireAuth`) |
 | Farid | US01 / US02 / US03: front-end authentification (pages inscription / connexion, bouton déconnexion) |
 | Navec | US04 / US05: back-end agendas (`AgendaService`, routes `/api/agendas`) |
