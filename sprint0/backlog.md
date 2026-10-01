@@ -8,7 +8,7 @@
 
 ## 1. Product backlog
 
-Le product backlog complet (toutes les user stories du projet) est dans [`/product-backlog.md`](../product-backlog.md).
+Le product backlog complet (toutes les user stories du projet) est dans [`sprint0/product-backlog.md`](../product-backlog.md).
 Ce sprint couvre : **T00, US01, US02, US03, US04, US05**.
 
 ---
