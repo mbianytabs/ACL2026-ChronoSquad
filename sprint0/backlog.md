@@ -96,11 +96,12 @@ Estimation en points de complexité (1, 2, 3, 5, 8).
 
 | Membre | Rôle / éléments |
 |--------|-----------------|
-| Manuel | Scrum Master: T00 (serveur Express + `JsonStore`), README, intégration des branches, tag `v1` |
+| Manuel | Scrum Master — T00 (serveur Express + `JsonStore`), README, intégration des branches, tag `v1` |
 | Giovana | US01 / US02 / US03: back-end authentification (routes, sessions, `requireAuth`) |
 | Farid | US01 / US02 / US03: front-end authentification (pages inscription / connexion, bouton déconnexion) |
 | Navec | US04 / US05: back-end agendas (`AgendaService`, routes `/api/agendas`) |
-| Membre 5 | US04 / US05: front-end agendas (liste + formulaire de création), tests manuels multi-machines |
+| Kaoutar | US04 / US05: front-end agendas (liste des agendas + formulaire de création) |
+| Youssef | Mise en page commune (`index.html`, `style.css`), tests manuels multi-machines (réseau local, redémarrage serveur) |
 | Toute l'équipe | Revue et rétrospective en fin de sprint |
 
 ## 4. Définition de « terminé » (Definition of Done)
