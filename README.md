@@ -37,7 +37,7 @@ Other computers on the same network can connect with `http://<server-ip>:3000`.
 
 ## Tech stack
 
-Node.js · Express · express-session · bcryptjs · HTML/CSS/JavaScript · JSON file storage
+Node.js · HTML/CSS/JavaScript · JSON file storage
 
 ## Team
 
