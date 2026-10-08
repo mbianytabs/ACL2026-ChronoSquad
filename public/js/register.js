@@ -30,8 +30,8 @@ form.addEventListener("submit", async (event) => {
  
     submitBtn.disabled = true;
     try {
-        await register(username, password); // fonction définie dans js/api.js
-        window.location.href = "index.html"; // compte créé : retour à la connexion
+        await api.register(username, password); // fonction définie dans js/api.js
+        window.location.href = "../index.html"; // compte créé : retour à la connexion
     } catch (err) {
         // err.status vient de api.js (400, 409, ...)
         if (err.status === 409) {
