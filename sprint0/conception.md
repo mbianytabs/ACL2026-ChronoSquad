@@ -177,10 +177,10 @@ RendezVousRepository --> RendezVous
 | Méthode | Route | Auth | Corps (JSON) | Réponse |
 |---------|-------|------|--------------|---------|
 | GET | `/` | Non | — | `index.html` |
-| POST | `/api/auth/register` | Non | `{ username, password }` | `201` utilisateur créé / `400` champ vide / `409` nom déjà pris |
-| POST | `/api/auth/login` | Non | `{ username, password }` | `200` utilisateur / `401` identifiants invalides |
-| POST | `/api/auth/logout` | Oui | — | `204` |
-| GET | `/api/auth/me` | Oui | — | `200` utilisateur connecté / `401` |
+| POST | `/api/register` | Non | `{ username, password }` | `201` utilisateur créé / `400` champ vide / `409` nom déjà pris |
+| POST | `/api/login` | Non | `{ username, password }` | `200` utilisateur / `401` identifiants invalides |
+| POST | `/api/logout` | Oui | — | `204` |
+| GET | `/api/me` | Oui | — | `200` utilisateur connecté / `401` |
 | GET | `/api/agendas` | Oui | — | `200` liste des agendas de l'utilisateur |
 | POST | `/api/agendas` | Oui | `{ name, color? }` | `201` agenda créé / `400` nom vide |
 
