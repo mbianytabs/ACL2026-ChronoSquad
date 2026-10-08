@@ -8,34 +8,80 @@
 </head>
 <body>
 <header class="topbar">
-    <a class="brand" href="agendas.html">ChronoSquad</a>
+    <a class="brand" href="agendas.html"><span class="brand-mark" aria-hidden="true"></span>ChronoSquad</a>
+
+    <!-- Week navigation -->
+    <div class="week-nav">
+        <button id="today-btn" type="button" class="btn btn-glass">Aujourd'hui</button>
+        <button id="prev-week" type="button" class="btn btn-glass btn-round" aria-label="Semaine précédente">‹</button>
+        <button id="next-week" type="button" class="btn btn-glass btn-round" aria-label="Semaine suivante">›</button>
+        <h2 id="week-label" class="week-label"></h2>
+    </div>
+
     <div class="user">
         <span id="current-user"></span>
-        <button id="logout-btn" type="button" class="btn">Se déconnecter</button>
+        <button id="logout-btn" type="button" class="btn btn-glass">Se déconnecter</button>
     </div>
 </header>
 
 <main class="home">
-    <section>
-        <h1>Mes agendas</h1>
-        <ul id="agenda-list" class="agenda-list"></ul>
-        <p id="empty" class="hint" hidden>Créez votre premier agenda.</p>
-    </section>
-
-    <section>
-        <form id="agenda-form" class="card" novalidate>
-            <h2>Nouvel agenda</h2>
+    <!-- Left: create, mini calendar, list of agendas -->
+    <aside class="sidebar glass">
+        <div class="sidebar-scroll">
+            <button id="new-agenda-btn" type="button" class="btn btn-create"
+                    aria-expanded="false" aria-controls="agenda-form">
+                <span class="btn-icon-glyph" aria-hidden="true">+</span>
+                <span>Créer</span>
+            </button>
 
             <p id="error" class="error" role="alert" hidden></p>
 
-            <label for="name">Nom</label>
-            <input id="name" name="name" type="text" placeholder="Projet ACL">
+            <form id="agenda-form" class="card" novalidate hidden>
+                <h2>Nouvel agenda</h2>
 
-            <label for="color">Couleur</label>
-            <input id="color" name="color" type="color" value="#3b82f6">
+                <label for="name">Nom</label>
+                <input id="name" name="name" type="text" placeholder="Projet ACL">
 
-            <button type="submit" class="btn btn-primary">Créer l'agenda</button>
-        </form>
+                <label for="color">Couleur</label>
+                <input id="color" name="color" type="color" value="#3b82f6">
+
+                <button type="submit" class="btn btn-primary">Créer l'agenda</button>
+            </form>
+
+            <section class="mini-cal" aria-label="Choisir une semaine">
+                <div class="mini-head">
+                    <h2 id="mini-label"></h2>
+                    <div class="mini-nav">
+                        <button id="mini-prev" type="button" class="btn btn-round btn-small" aria-label="Mois précédent">‹</button>
+                        <button id="mini-next" type="button" class="btn btn-round btn-small" aria-label="Mois suivant">›</button>
+                    </div>
+                </div>
+                <div class="mini-weekdays" aria-hidden="true">
+                    <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
+                </div>
+                <div id="mini-grid" class="mini-grid"></div>
+            </section>
+
+            <section class="agenda-section">
+                <h2 class="section-title">Mes agendas</h2>
+                <ul id="agenda-list" class="agenda-list"></ul>
+                <p id="empty" class="hint" hidden>Aucun agenda pour l'instant. Appuyez sur Créer pour en ajouter un.</p>
+            </section>
+        </div>
+    </aside>
+
+    <!-- Right: week view -->
+    <section class="calendar glass" aria-label="Semaine">
+        <div id="week-body" class="week-body">
+            <div class="week-head">
+                <span id="tz-label" class="tz-label"></span>
+                <div id="week-days" class="week-days"></div>
+            </div>
+            <div class="week-grid">
+                <div id="hours" class="hours" aria-hidden="true"></div>
+                <div id="week-columns" class="week-columns"></div>
+            </div>
+        </div>
     </section>
 </main>
 
