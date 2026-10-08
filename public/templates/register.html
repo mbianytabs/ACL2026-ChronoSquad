@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport"
+              content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>Créer un compte · ChronoSquad</title>
+        <link rel="stylesheet" href="../css/style.css">
+    </head>
+    <body>
+        <header class="topbar">
+            <a href="../index.html" class="brand"><span class="brand-mark" aria-hidden="true"></span>ChronoSquad</a>
+        </header>
+
+        <main class="auth">
+            <form id="register-form" class="card" novalidate>
+                <h1>Créer un compte</h1>
+                <p class="lede">Un nom d'utilisateur et un mot de passe suffisent.</p>
+
+                <p id="error" class="error" role="alert" hidden></p>
+
+                <label for="username">Nom d'utilisateur</label>
+                <input id="username" name="username" type="text" autocomplete="username" autofocus>
+
+                <label for="password">Mot de passe</label>
+                <input id="password" name="password" type="password" autocomplete="new-password">
+
+                <label for="confirm">Confirmer le mot de passe</label>
+                <input id="confirm" name="confirm" type="password" autocomplete="new-password">
+
+                <button type="submit" class="btn btn-primary">Créer mon compte</button>
+
+                <p class="hint">Déjà un compte? <a href="../index.html">Se connecter</a></p>
+            </form>
+        </main>
+
+        <script src="../js/api.js"></script>
+        <script src="../js/register.js"></script>
+    </body>
+</html>
