@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mes agendas · ChronoSquad</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<header class="topbar">
+    <a class="brand" href="agendas.html">ChronoSquad</a>
+    <div class="user">
+        <span id="current-user"></span>
+        <button id="logout-btn" type="button" class="btn">Se déconnecter</button>
+    </div>
+</header>
+
+<main class="home">
+    <section>
+        <h1>Mes agendas</h1>
+        <ul id="agenda-list" class="agenda-list"></ul>
+        <p id="empty" class="hint" hidden>Créez votre premier agenda.</p>
+    </section>
+
+    <section>
+        <form id="agenda-form" class="card" novalidate>
+            <h2>Nouvel agenda</h2>
+
+            <p id="error" class="error" role="alert" hidden></p>
+
+            <label for="name">Nom</label>
+            <input id="name" name="name" type="text" placeholder="Projet ACL">
+
+            <label for="color">Couleur</label>
+            <input id="color" name="color" type="color" value="#3b82f6">
+
+            <button type="submit" class="btn btn-primary">Créer l'agenda</button>
+        </form>
+    </section>
+</main>
+
+<script src="../js/api.js"></script>
+<script src="../js/agendas.js"></script>
+</body>
+</html>
