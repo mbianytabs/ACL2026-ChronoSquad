@@ -1,1 +1,1 @@
-// logic of index.html
+// login.js: logic of index.html
