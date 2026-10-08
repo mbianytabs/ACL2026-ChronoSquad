@@ -42,7 +42,7 @@ flowchart LR
 | Écriture fichiers | Écriture dans un fichier temporaire puis `rename` | Évite de corrompre les données si le serveur s'arrête pendant une écriture |
 | Client | HTML / CSS / JavaScript (`fetch`) | Pas de build nécessaire, lancement direct |
 
-# Diagramme de classes
+## 3. Diagramme de classes
 
 ```mermaid
 classDiagram
