@@ -1,1 +1,23 @@
-
+[
+    {
+        "id": "agenda1",
+        "name": "Agenda personnel",
+        "color": "#4A90E2",
+        "ownerId": "user1",
+        "createdAt": "2026-10-08T18:30:00.000Z"
+    },
+    {
+        "id": "agenda2",
+        "name": "Agenda professionnel",
+        "color": "#50C878",
+        "ownerId": "user1",
+        "createdAt": "2026-10-08T18:35:00.000Z"
+    },
+    {
+        "id": "agenda3",
+        "name": "Agenda de Bob",
+        "color": "#F5A623",
+        "ownerId": "user2",
+        "createdAt": "2026-10-08T18:40:00.000Z"
+    }
+]

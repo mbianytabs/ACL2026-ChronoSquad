@@ -1,1 +1,20 @@
-
+[
+    {
+        "id": "user1",
+        "username": "alice",
+        "passwordHash": "alice123",
+        "createdAt": "2026-10-08T18:00:00.000Z"
+    },
+    {
+        "id": "user2",
+        "username": "bob",
+        "passwordHash": "bob123",
+        "createdAt": "2026-10-08T18:10:00.000Z"
+    },
+    {
+        "id": "user3",
+        "username": "charlie",
+        "passwordHash": "charlie123",
+        "createdAt": "2026-10-08T18:20:00.000Z"
+    }
+]
