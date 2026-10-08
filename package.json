@@ -1,1 +1,13 @@
+{
+"name": "Application",
+"version": "0.0.1",
+"description": "Tests de nodejs et implémentation de serveurs simples.", 
+"homepage": "somewhere.that.i.used.to.know.com",
+"licence": "MIT",
+"author": "Julien Provillard",
+"type": "module",
+"dependencies": {
+"random-item": "^4.0.1"
+}
+}
 
