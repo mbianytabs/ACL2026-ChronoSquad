@@ -4,7 +4,7 @@ const errorBox = document.getElementById("error");
 const submitBtn = form.querySelector("button[type='submit']");
  
 function showError(text) {
-    errorBox.textContent = text; // textContent, jamais innerHTML (protection XSS)
+    errorBox.textContent = text; 
     errorBox.hidden = false;
 }
  
@@ -30,10 +30,10 @@ form.addEventListener("submit", async (event) => {
  
     submitBtn.disabled = true;
     try {
-        await api.register(username, password); // fonction définie dans js/api.js
-        window.location.href = "../index.html"; // compte créé : retour à la connexion
+        await api.register(username, password); 
+        window.location.href = "../index.html"; 
     } catch (err) {
-        // err.status vient de api.js (400, 409, ...)
+        
         if (err.status === 409) {
             showError("Ce nom d'utilisateur est déjà pris.");
         } else if (err.status === 400) {
