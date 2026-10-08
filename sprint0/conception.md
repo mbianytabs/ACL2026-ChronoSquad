@@ -75,88 +75,134 @@ flowchart LR
 | Écriture fichiers | Écriture dans un fichier temporaire puis `rename` | Évite de corrompre les données si le serveur s'arrête pendant une écriture |
 | Client | HTML / CSS / JavaScript (`fetch`) | Pas de build nécessaire, lancement direct |
 
-## 3. Diagramme de classes
-
-La classe `RendezVous` (stéréotype `<<Sprint 1>>`) est prévue pour le Sprint 1 et n'est pas implémentée dans ce sprint.
+# Diagramme de classes
 
 ```mermaid
 classDiagram
-    class User {
-        +String id
-        +String username
-        +String passwordHash
-        +Date createdAt
-        +toPublic() Object
-    }
+direction LR
 
-    class Agenda {
-        +String id
-        +String name
-        +String color
-        +String ownerId
-        +Date createdAt
-    }
+class User {
+    +String id
+    +String username
+    -String passwordHash
+    +Date createdAt
+}
 
-    class RendezVous {
-        <<Sprint 1>>
-        +String id
-        +String agendaId
-        +String title
-        +Date start
-        +Date end
-        +String location
-        +String description
-    }
+class Agenda {
+    +String id
+    +String name
+    +String color
+    +String ownerId
+    +Date createdAt
+}
 
-    class JsonStore {
-        -String filePath
-        -Array cache
-        +load() Array
-        +getAll() Array
-        +find(predicate) Object
-        +filter(predicate) Array
-        +insert(item) Object
-        +save() void
-    }
+class RendezVous {
+    +String id
+    +String agendaId
+    +String title
+    +Date start
+    +Date end
+    +String location
+    +String description
+}
 
-    class UserService {
-        -JsonStore store
-        +register(username, password) User
-        +authenticate(username, password) User
-        +findById(id) User
-    }
+class UserController {
+    +register(req, res)
+    +getCurrentUser(req, res)
+}
 
-    class AgendaService {
-        -JsonStore store
-        +create(ownerId, name, color) Agenda
-        +listByOwner(ownerId) Agenda[]
-    }
+class AuthController {
+    +login(req, res)
+    +logout(req, res)
+}
 
-    class AuthRoutes {
-        +POST register
-        +POST login
-        +POST logout
-        +GET me
-    }
+class AgendaController {
+    +getAgendas(req, res)
+    +createAgenda(req, res)
+    +getAgenda(req, res)
+}
 
-    class AgendaRoutes {
-        +GET agendas
-        +POST agendas
-    }
+class RendezVousController {
+    +getRendezVous(req, res)
+    +createRendezVous(req, res)
+    +updateRendezVous(req, res)
+    +deleteRendezVous(req, res)
+}
 
-    class RequireAuth {
-        +handle(req, res, next) void
-    }
+class Routes {
+    +POST /api/users
+    +GET /api/users/me
+    +POST /api/auth/login
+    +POST /api/auth/logout
+    +GET /api/agendas
+    +GET /api/agendas/:id
+    +POST /api/agendas
+    +GET /api/agendas/:agendaId/rendezvous
+    +POST /api/rendezvous
+    +PUT /api/rendezvous/:id
+    +DELETE /api/rendezvous/:id
+}
 
-    User "1" --> "0..*" Agenda : possède
-    Agenda "1" --> "0..*" RendezVous : contient
-    UserService --> JsonStore : users.json
-    AgendaService --> JsonStore : agendas.json
-    UserService ..> User : crée
-    AgendaService ..> Agenda : crée
-    AuthRoutes --> UserService
-    AgendaRoutes --> AgendaService
-    AgendaRoutes ..> RequireAuth : protégée par
+class JsonStore {
+    -String filePath
+    +getAll()
+    +findById(id)
+    +insert(data)
+    +update(id, data)
+    +delete(id)
+    -load()
+    -save()
+}
+
+class UserRepository {
+    -JsonStore store
+    +findById(id)
+    +findByUsername(username)
+    +create(user)
+}
+
+class AgendaRepository {
+    -JsonStore store
+    +findById(id)
+    +findByOwner(ownerId)
+    +create(agenda)
+}
+
+class RendezVousRepository {
+    -JsonStore store
+    +findById(id)
+    +findByAgenda(agendaId)
+    +create(rendezVous)
+    +update(id, rendezVous)
+    +delete(id)
+}
+
+class RequireAuth {
+    +handle(req, res, next)
+}
+
+User "1" --> "0..*" Agenda : possède
+Agenda "1" --> "0..*" RendezVous : contient
+
+Routes --> UserController
+Routes --> AuthController
+Routes --> AgendaController
+Routes --> RendezVousController
+Routes --> RequireAuth
+
+UserController --> UserRepository
+AuthController --> UserRepository
+AgendaController --> AgendaRepository
+RendezVousController --> RendezVousRepository
+RendezVousController --> AgendaRepository
+
+UserRepository --> JsonStore : users.json
+AgendaRepository --> JsonStore : agendas.json
+RendezVousRepository --> JsonStore : rendezvous.json
+
+UserRepository --> User
+AgendaRepository --> Agenda
+RendezVousRepository --> RendezVous
 ```
 
 ## 4. API REST: Sprint 0
