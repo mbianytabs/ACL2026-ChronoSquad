@@ -27,13 +27,34 @@ after(async () => {
     }
 });
 
-test("la page principale et les ressources du front restent intactes", async () => {
+test("les trois pages sont rendues par EJS avec leurs inclusions", async () => {
+    const pages = [
+        ["/?test=1", "Connexion", "login-form", "login.js"],
+        ["/register", "Créer un compte", "register-form", "register.js"],
+        ["/agendas", "Mes agendas", "current-user", "agendas.js"]
+    ];
+    for (const [url, title, elementId, script] of pages) {
+        const response = await fetch(baseUrl + url);
+        assert.equal(response.status, 200, url);
+        assert.match(response.headers.get("content-type"), /text\/html/);
+        const html = await response.text();
+        assert.ok(html.includes(`<title>${title} · ChronoSquad</title>`), url);
+        assert.ok(html.includes(`id="${elementId}"`), url);
+        assert.ok(html.includes('href="/css/style.css"'), url);
+        assert.ok(html.includes('src="/js/api.js"'), url);
+        assert.ok(html.includes(`src="/js/${script}"`), url);
+        assert.ok(html.indexOf('src="/js/api.js"') < html.indexOf(`src="/js/${script}"`), url);
+        assert.ok(!html.includes("<%"), url);
+    }
+});
+
+test("les ressources du front restent servies à l'identique", async () => {
     const files = [
-        ["/?test=1", "index.html", "text/html"],
-        ["/templates/register.html", "templates/register.html", "text/html"],
-        ["/templates/agendas.html", "templates/agendas.html", "text/html"],
         ["/css/style.css?v=1", "css/style.css", "text/css"],
-        ["/js/api.js?v=1", "js/api.js", "javascript"]
+        ["/js/api.js?v=1", "js/api.js", "javascript"],
+        ["/js/login.js", "js/login.js", "javascript"],
+        ["/js/register.js", "js/register.js", "javascript"],
+        ["/js/agendas.js", "js/agendas.js", "javascript"]
     ];
     for (const [url, file, contentType] of files) {
         const response = await fetch(baseUrl + url);
@@ -90,7 +111,8 @@ test("le serveur refuse les corps JSON invalides et trop volumineux", async () =
 });
 
 test("les sources et les données ne sont jamais servies comme fichiers publics", async () => {
-    for (const url of ["/backend/server.js", "/data/users.json", "/package.json", "/.git/config"]) {
+    for (const url of ["/backend/server.js", "/data/users.json", "/package.json", "/.git/config",
+        "/views/login.ejs", "/views/partials/head.ejs"]) {
         const response = await fetch(baseUrl + url);
         assert.equal(response.status, 404, url);
     }

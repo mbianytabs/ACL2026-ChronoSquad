@@ -8,7 +8,7 @@ import { errorHandler } from "./middleware/ErrorHandler.js";
 
 export const app = express();
 const publicPath = fileURLToPath(new URL("../public/", import.meta.url));
-const viewsPath = fileURLToPath(new URL("./views/", import.meta.url));
+const viewsPath = fileURLToPath(new URL("../views/", import.meta.url));
 
 app.disable("x-powered-by");
 app.set("views", viewsPath);
