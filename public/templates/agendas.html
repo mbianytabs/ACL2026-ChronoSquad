@@ -28,25 +28,13 @@
     <!-- Left: create, mini calendar, list of agendas -->
     <aside class="sidebar glass">
         <div class="sidebar-scroll">
-            <button id="new-agenda-btn" type="button" class="btn btn-create"
-                    aria-expanded="false" aria-controls="agenda-form">
+            <button id="create-btn" type="button" class="btn btn-create"
+                    aria-haspopup="dialog" aria-expanded="false" aria-controls="create-dialog">
                 <span class="btn-icon-glyph" aria-hidden="true">+</span>
                 <span>Créer</span>
             </button>
 
             <p id="error" class="error" role="alert" hidden></p>
-
-            <form id="agenda-form" class="card" novalidate hidden>
-                <h2>Nouvel agenda</h2>
-
-                <label for="name">Nom</label>
-                <input id="name" name="name" type="text" placeholder="Projet ACL">
-
-                <label for="color">Couleur</label>
-                <input id="color" name="color" type="color" value="#3b82f6">
-
-                <button type="submit" class="btn btn-primary">Créer l'agenda</button>
-            </form>
 
             <section class="mini-cal" aria-label="Choisir une semaine">
                 <div class="mini-head">
@@ -64,7 +52,10 @@
 
             <section class="agenda-section">
                 <h2 class="section-title">Mes agendas</h2>
-                <ul id="agenda-list" class="agenda-list"></ul>
+                <div class="agenda-list-wrap">
+                    <span id="agenda-lens" class="agenda-lens" aria-hidden="true"></span>
+                    <ul id="agenda-list" class="agenda-list"></ul>
+                </div>
                 <p id="empty" class="hint" hidden>Aucun agenda pour l'instant. Appuyez sur Créer pour en ajouter un.</p>
             </section>
         </div>
@@ -72,6 +63,7 @@
 
     <!-- Right: week view -->
     <section class="calendar glass" aria-label="Semaine">
+        <p id="calendar-hint" class="calendar-hint"></p>
         <div id="week-body" class="week-body">
             <div class="week-head">
                 <span id="tz-label" class="tz-label"></span>
@@ -84,6 +76,149 @@
         </div>
     </section>
 </main>
+
+<!-- Creation sheet: rises from the bottom center of the screen -->
+<dialog id="create-dialog" class="create-sheet" aria-labelledby="create-title">
+    <form id="create-form" class="sheet-form" novalidate>
+        <span class="sheet-grabber" aria-hidden="true"></span>
+
+        <div class="sheet-head">
+            <h2 id="create-title" class="visually-hidden">Créer</h2>
+            <div class="segmented" role="radiogroup" aria-label="Que voulez-vous créer ?">
+                <input id="kind-tache" type="radio" name="kind" value="tache" checked>
+                <label for="kind-tache">Tâche</label>
+                <input id="kind-agenda" type="radio" name="kind" value="agenda">
+                <label for="kind-agenda">Agenda</label>
+                <span class="segmented-thumb" aria-hidden="true"></span>
+            </div>
+            <button id="close-dialog" type="button" class="btn btn-glass btn-round" aria-label="Fermer">×</button>
+        </div>
+
+        <!-- Tache -->
+        <fieldset id="tache-fields" class="sheet-fields">
+            <legend class="visually-hidden">Nouvelle tâche</legend>
+
+            <div id="tache-inputs" class="sheet-fields-inner">
+                <input id="tache-title" type="text" class="title-input" placeholder="Ajouter un titre" aria-label="Titre" autocomplete="off">
+
+                <div class="field-row">
+                    <div class="field">
+                        <label for="tache-date">Date</label>
+                        <input id="tache-date" type="date">
+                    </div>
+                    <div class="field">
+                        <label for="tache-start">Début</label>
+                        <input id="tache-start" type="time" step="300">
+                    </div>
+                    <div class="field">
+                        <label for="tache-end">Fin</label>
+                        <input id="tache-end" type="time" step="300">
+                    </div>
+                </div>
+
+                <div class="field">
+                    <span id="picker-label" class="field-label">Agendas</span>
+                    <button id="picker-btn" type="button" class="picker-btn"
+                            aria-labelledby="picker-label picker-btn" aria-expanded="false" aria-controls="picker-panel">
+                        <span id="picker-chips" class="picker-chips"></span>
+                    </button>
+                    <div id="picker-panel" class="picker-panel" inert>
+                        <div class="picker-clip">
+                            <ul id="picker-options" class="picker-options" aria-label="Agendas de la tâche"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="tache-location">Lieu <span class="optional">facultatif</span></label>
+                    <input id="tache-location" type="text" placeholder="Salle 101" autocomplete="off">
+                </div>
+
+                <div class="field">
+                    <label for="tache-description">Description <span class="optional">facultatif</span></label>
+                    <textarea id="tache-description" rows="2" placeholder="Ajouter des détails"></textarea>
+                </div>
+            </div>
+
+            <p id="no-agenda-note" class="sheet-note" hidden>
+                Une tâche appartient à un agenda. Créez d'abord votre premier agenda.
+                <button id="go-agenda-btn" type="button" class="link-btn">Créer un agenda</button>
+            </p>
+        </fieldset>
+
+        <!-- Agenda -->
+        <fieldset id="agenda-fields" class="sheet-fields" hidden>
+            <legend class="visually-hidden">Nouvel agenda</legend>
+
+            <input id="agenda-name" type="text" class="title-input" placeholder="Nom de l'agenda" aria-label="Nom" autocomplete="off">
+
+            <div class="field">
+                <span id="color-label" class="field-label">Couleur</span>
+                <div class="swatches" role="radiogroup" aria-labelledby="color-label">
+                    <label class="swatch" style="--swatch: #3b82f6"><input type="radio" name="color" value="#3b82f6" checked aria-label="Bleu"><span></span></label>
+                    <label class="swatch" style="--swatch: #8b5cf6"><input type="radio" name="color" value="#8b5cf6" aria-label="Violet"><span></span></label>
+                    <label class="swatch" style="--swatch: #ec4899"><input type="radio" name="color" value="#ec4899" aria-label="Rose"><span></span></label>
+                    <label class="swatch" style="--swatch: #ef4444"><input type="radio" name="color" value="#ef4444" aria-label="Rouge"><span></span></label>
+                    <label class="swatch" style="--swatch: #f97316"><input type="radio" name="color" value="#f97316" aria-label="Orange"><span></span></label>
+                    <label class="swatch" style="--swatch: #eab308"><input type="radio" name="color" value="#eab308" aria-label="Jaune"><span></span></label>
+                    <label class="swatch" style="--swatch: #10b981"><input type="radio" name="color" value="#10b981" aria-label="Vert"><span></span></label>
+                    <label class="swatch" style="--swatch: #14b8a6"><input type="radio" name="color" value="#14b8a6" aria-label="Turquoise"><span></span></label>
+                    <label class="swatch swatch-custom" title="Autre couleur">
+                        <input id="color-custom-radio" type="radio" name="color" value="#1c1e3a" aria-label="Autre couleur">
+                        <span></span>
+                        <input id="color-custom" type="color" value="#1c1e3a" tabindex="-1" aria-hidden="true">
+                    </label>
+                </div>
+            </div>
+
+            <div id="agenda-preview" class="agenda-preview" aria-hidden="true">
+                <span class="agenda-dot"></span>
+                <span id="agenda-preview-name" class="agenda-name">Nom de l'agenda</span>
+            </div>
+        </fieldset>
+
+        <p id="dialog-error" class="error" role="alert" hidden></p>
+
+        <div class="sheet-footer">
+            <button id="cancel-btn" type="button" class="btn btn-glass">Annuler</button>
+            <button id="save-btn" type="submit" class="btn btn-primary">Créer la tâche</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Details of a tache: opens beside its card in the week view -->
+<dialog id="event-dialog" class="event-pop" aria-labelledby="event-title">
+    <div class="event-pop-inner">
+        <div class="event-pop-head">
+            <span class="event-pop-dot" aria-hidden="true"></span>
+            <h2 id="event-title"></h2>
+            <button id="event-close" type="button" class="btn btn-glass btn-round btn-small" aria-label="Fermer">×</button>
+        </div>
+
+        <dl class="event-details">
+            <div class="detail-row">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                <dt class="visually-hidden">Quand</dt>
+                <dd id="event-when"></dd>
+            </div>
+            <div id="event-location-row" class="detail-row">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                <dt class="visually-hidden">Lieu</dt>
+                <dd id="event-location"></dd>
+            </div>
+            <div class="detail-row">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+                <dt class="visually-hidden">Agenda</dt>
+                <dd><span id="event-agenda" class="chip"></span></dd>
+            </div>
+            <div class="detail-row">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 11h14M5 16h9"/></svg>
+                <dt class="visually-hidden">Description</dt>
+                <dd id="event-description" class="event-description"></dd>
+            </div>
+        </dl>
+    </div>
+</dialog>
 
 <script src="../js/api.js"></script>
 <script src="../js/agendas.js"></script>

@@ -36,6 +36,7 @@
     --radius-lg: 22px;
     --hour-height: 48px;                    /* must match HOUR_HEIGHT in agendas.js */
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --spring: cubic-bezier(0.34, 1.36, 0.64, 1);   /* slight overshoot, like glass settling */
 }
 
 /* ---------- Base ---------- */
@@ -109,7 +110,10 @@ a {
 .glass::after,
 .auth .card::after,
 .btn.btn-create::after,
-.btn.btn-glass::after {
+.btn.btn-glass::after,
+.agenda-lens::after,
+.create-sheet::after,
+.event-pop::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -222,7 +226,11 @@ label {
 }
 
 input[type="text"],
-input[type="password"] {
+input[type="password"],
+input[type="date"],
+input[type="time"],
+textarea {
+    width: 100%;
     height: 44px;
     padding: 0 14px;
     font: inherit;
@@ -238,26 +246,23 @@ input::placeholder {
 }
 
 input[type="text"]:focus,
-input[type="password"]:focus {
+input[type="password"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+textarea:focus {
     outline: none;
     border-color: var(--sun);
     box-shadow: 0 0 0 3px rgba(245, 165, 36, 0.28);
 }
 
-input[type="color"] {
-    width: 56px;
-    height: 40px;
-    padding: 3px;
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid rgba(28, 30, 58, 0.14);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-}
-
-input[type="color"]:focus-visible,
 input[type="checkbox"]:focus-visible,
 .btn:focus-visible,
-.mini-day:focus-visible {
+.mini-day:focus-visible,
+.agenda-item:focus-visible,
+.link-btn:focus-visible,
+.picker-btn:focus-visible,
+.segmented input:focus-visible + label,
+.swatch input:focus-visible + span {
     outline: 2px solid var(--sun);
     outline-offset: 2px;
 }
@@ -354,7 +359,7 @@ input[type="checkbox"]:focus-visible,
     transition: transform 200ms var(--ease-out);
 }
 
-/* The "+" turns into a "×" while the form is open */
+/* The "+" turns into a "×" while the sheet is open */
 .btn-create[aria-expanded="true"] .btn-icon-glyph {
     transform: rotate(45deg);
 }
@@ -440,40 +445,6 @@ body:has(> .home) {
 /* Items keep their size; the sidebar scrolls instead */
 .sidebar-scroll > * {
     flex-shrink: 0;
-}
-
-/* Creation form: tinted but not blurred again (never stack glass on glass) */
-.sidebar .card {
-    padding: 16px;
-    background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.65));
-    border: none;
-    box-shadow:
-        inset 0 1px 1px #ffffff,
-        inset 0 0 14px rgba(255, 255, 255, 0.8),
-        0 0 0 1px rgba(28, 30, 58, 0.07),
-        0 8px 20px rgba(28, 30, 58, 0.08);
-    transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
-    transform-origin: top center; /* grows out of the Créer button */
-}
-
-@starting-style {
-    .sidebar .card {
-        opacity: 0;
-        transform: translateY(-6px) scale(0.98);
-    }
-}
-
-.sidebar .card h2 {
-    font-size: 1rem;
-}
-
-.sidebar .card label {
-    margin-top: 14px;
-}
-
-.sidebar .btn.btn-primary {
-    height: 42px;
-    margin-top: 18px;
 }
 
 .sidebar .error,
@@ -569,7 +540,36 @@ body:has(> .home) {
     letter-spacing: 0;
 }
 
+/* Text-only button (Créer un agenda) */
+.link-btn {
+    padding: 2px 4px;
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--muted);
+    background: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--sun);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .link-btn:hover {
+        color: var(--text);
+    }
+}
+
+.agenda-list-wrap {
+    position: relative;
+}
+
 .agenda-list {
+    position: relative;
+    z-index: 1;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -583,42 +583,116 @@ body:has(> .home) {
     display: flex;
     align-items: center;
     gap: 12px;
+    width: 100%;
     margin: 0;
-    padding: 7px 8px;
+    padding: 9px 10px;
+    font: inherit;
     font-size: 0.875rem;
     font-weight: 500;
+    text-align: left;
     color: var(--text);
-    border-radius: var(--radius-sm);
+    background: transparent;
+    border: none;
+    border-radius: 14px;
     cursor: pointer;
+    transition: color 200ms ease, transform 160ms var(--ease-out);
+}
+
+.agenda-item:active {
+    transform: scale(0.98);
+}
+
+/* While one agenda is shown, the others step back */
+.agenda-list:has([aria-pressed="true"]) .agenda-item[aria-pressed="false"] {
+    color: var(--muted);
+}
+
+.agenda-item[aria-pressed="true"] {
+    font-weight: 700;
 }
 
 @media (hover: hover) and (pointer: fine) {
-    .agenda-item:hover {
+    .agenda-item[aria-pressed="false"]:hover {
+        color: var(--text);
         background: var(--tint);
     }
 }
 
-/* Checkbox drawn in the agenda's own color */
-.agenda-item input[type="checkbox"] {
+.agenda-dot {
     flex: none;
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    margin: 0;
-    border: 2px solid var(--agenda-color);
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 120ms ease;
+    width: 12px;
+    height: 12px;
+    background: var(--agenda-color);
+    border-radius: 50%;
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.55),
+        0 0 0 3px color-mix(in srgb, var(--agenda-color) 18%, transparent);
+    transition: box-shadow 260ms var(--ease-out), transform 260ms var(--spring);
 }
 
-.agenda-item input[type="checkbox"]:checked {
-    background: var(--agenda-color) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
+.agenda-item[aria-pressed="true"] .agenda-dot {
+    transform: scale(1.15);
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.55),
+        0 0 0 4px color-mix(in srgb, var(--agenda-color) 26%, transparent),
+        0 0 14px color-mix(in srgb, var(--agenda-color) 70%, transparent);
 }
 
 .agenda-name {
+    flex: 1;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.agenda-count {
+    flex: none;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--faint);
+}
+
+.agenda-item[aria-pressed="true"] .agenda-count {
+    color: color-mix(in srgb, var(--agenda-color) 60%, var(--text));
+}
+
+/* Liquid glass lens behind the selected agenda: glides between rows, tinted by the agenda */
+.agenda-lens {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    border-radius: 14px;
+    background-color: color-mix(in srgb, var(--agenda-color, #ffffff) 16%, rgba(255, 255, 255, 0.7));
+    background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.05) 60%);
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        inset 0 -1px 1px rgba(255, 255, 255, 0.7),
+        inset 0 0 14px rgba(255, 255, 255, 0.75),
+        0 0 0 1px color-mix(in srgb, var(--agenda-color, #1c1e3a) 22%, transparent),
+        0 6px 18px color-mix(in srgb, var(--agenda-color, #1c1e3a) 26%, transparent);
+    opacity: 0;
+    scale: 0.94;
+    pointer-events: none;
+    transition:
+        transform 460ms var(--spring),
+        height 300ms var(--ease-out),
+        opacity 220ms ease,
+        scale 320ms var(--spring),
+        background-color 360ms ease,
+        box-shadow 360ms ease;
+}
+
+.agenda-lens.visible {
+    opacity: 1;
+    scale: 1;
+}
+
+.agenda-lens.jump {
+    transition: none;
 }
 
 /* ---------- Week view ---------- */
@@ -757,6 +831,806 @@ body:has(> .home) {
     border-radius: 50%;
 }
 
+/* Empty slots open the sheet on that time */
+.week-columns {
+    cursor: cell;
+}
+
+/* ---------- Taches in the week view ---------- */
+/* Small panes of glass tinted by their agenda, with a solid edge in its color */
+.event {
+    position: absolute;
+    margin: 0;
+    font: inherit;
+    text-align: left;
+    border: none;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow: hidden;
+    padding: 5px 8px 5px 11px;
+    font-size: 0.75rem;
+    line-height: 1.25;
+    color: color-mix(in srgb, var(--agenda-color) 45%, #1c1e3a);
+    background:
+        linear-gradient(160deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 55%),
+        color-mix(in srgb, var(--agenda-color) 22%, rgba(255, 255, 255, 0.82));
+    border-radius: 10px;
+    box-shadow:
+        inset 3px 0 0 var(--agenda-color),
+        inset 0 1px 1px rgba(255, 255, 255, 0.9),
+        0 0 0 1px color-mix(in srgb, var(--agenda-color) 28%, transparent),
+        0 4px 12px color-mix(in srgb, var(--agenda-color) 20%, transparent);
+    cursor: pointer;
+    animation: event-in 520ms var(--ease-out) both;
+    animation-delay: calc(min(var(--i), 14) * 28ms);
+    transition: transform 180ms var(--ease-out), box-shadow 180ms ease;
+}
+
+.event-title {
+    overflow: hidden;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.event-time,
+.event-location {
+    overflow: hidden;
+    font-variant-numeric: tabular-nums;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.8;
+}
+
+/* Short taches: title and time on one line */
+.event.compact {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+.event.compact .event-location {
+    display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .event:hover {
+        z-index: 2;
+        transform: translateY(-1px) scale(1.015);
+        box-shadow:
+            inset 3px 0 0 var(--agenda-color),
+            inset 0 1px 1px rgba(255, 255, 255, 0.9),
+            0 0 0 1px color-mix(in srgb, var(--agenda-color) 40%, transparent),
+            0 10px 24px color-mix(in srgb, var(--agenda-color) 32%, transparent);
+    }
+}
+
+/* Card whose details are open */
+.event.active {
+    z-index: 2;
+    box-shadow:
+        inset 3px 0 0 var(--agenda-color),
+        inset 0 1px 1px rgba(255, 255, 255, 0.9),
+        0 0 0 2px var(--agenda-color),
+        0 10px 28px color-mix(in srgb, var(--agenda-color) 40%, transparent);
+}
+
+.event:focus-visible {
+    outline: 2px solid var(--agenda-color);
+    outline-offset: 2px;
+}
+
+@keyframes event-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.96);
+        filter: blur(4px);
+    }
+}
+
+/* Shown over the empty calendar until an agenda is selected */
+.calendar-hint {
+    position: absolute;
+    top: 52%;
+    left: 50%;
+    z-index: 2;
+    margin: 0;
+    padding: 12px 22px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--muted);
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.55));
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border-radius: 999px;
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        inset 0 0 12px rgba(255, 255, 255, 0.8),
+        0 0 0 1px rgba(28, 30, 58, 0.07),
+        0 10px 30px rgba(28, 30, 58, 0.10);
+    translate: -50% -50%;
+    pointer-events: none;
+    transition: opacity 260ms ease, transform 420ms var(--spring);
+}
+
+.calendar-hint.gone {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+}
+
+/* ---------- Details of a tache ---------- */
+/* Glass card beside the clicked tache, lit by its agenda's color */
+.event-pop {
+    position: fixed;
+    inset: auto;
+    top: var(--y, 50%);
+    left: var(--x, 50%);
+    width: 340px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100dvh - 32px);
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    color: var(--text);
+    border: none;
+    border-radius: 22px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.56));
+    backdrop-filter: blur(36px) saturate(200%);
+    -webkit-backdrop-filter: blur(36px) saturate(200%);
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        inset 0 -1px 1px rgba(255, 255, 255, 0.7),
+        inset 0 0 24px rgba(255, 255, 255, 0.7),
+        0 0 0 1px rgba(28, 30, 58, 0.07),
+        0 6px 16px rgba(28, 30, 58, 0.08),
+        0 24px 60px color-mix(in srgb, var(--agenda-color) 26%, rgba(28, 30, 58, 0.14));
+    opacity: 1;
+    transform: none;
+    transform-origin: left top;
+    transition:
+        opacity 200ms ease,
+        transform 440ms var(--spring),
+        overlay 440ms allow-discrete,
+        display 440ms allow-discrete;
+}
+
+.event-pop[data-side="left"] {
+    transform-origin: right top;
+}
+
+.event-pop:not([open]) {
+    opacity: 0;
+    transform: scale(0.94);
+    transition:
+        opacity 160ms ease,
+        transform 180ms ease-in,
+        overlay 180ms allow-discrete,
+        display 180ms allow-discrete;
+}
+
+@starting-style {
+    .event-pop[open] {
+        opacity: 0;
+        transform: scale(0.88);
+    }
+}
+
+/* The page stays visible: only the card floats */
+.event-pop::backdrop {
+    background: transparent;
+}
+
+/* Glow of the agenda's color caught at the top of the glass */
+.event-pop::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 110px;
+    background: radial-gradient(90% 100% at 20% 0%, color-mix(in srgb, var(--agenda-color) 30%, transparent), transparent 75%);
+    pointer-events: none;
+}
+
+.event-pop-inner {
+    position: relative;
+    max-height: calc(100dvh - 32px);
+    padding: 18px 18px 20px;
+    overflow-y: auto;
+}
+
+.event-pop-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.event-pop-dot {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-top: 6px;
+    background: var(--agenda-color);
+    border-radius: 50%;
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.55),
+        0 0 0 4px color-mix(in srgb, var(--agenda-color) 26%, transparent),
+        0 0 14px color-mix(in srgb, var(--agenda-color) 70%, transparent);
+}
+
+.event-pop-head h2 {
+    flex: 1;
+    min-width: 0;
+    font-size: 1.25rem;
+    overflow-wrap: anywhere;
+}
+
+.event-details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 16px 0 0;
+}
+
+.detail-row {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    align-items: start;
+    gap: 12px;
+}
+
+.detail-row svg {
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.detail-row dd {
+    margin: 0;
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+}
+
+.detail-row .chip {
+    height: 24px;
+    animation: none;
+}
+
+.event-description {
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.event-description.empty {
+    color: var(--faint);
+}
+
+/* ---------- Creation sheet ---------- */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* Rises from the bottom center; the thickest piece of glass on the page */
+.create-sheet {
+    width: min(580px, calc(100vw - 32px));
+    max-width: none;
+    max-height: none;
+    margin: auto auto 24px;
+    padding: 0;
+    overflow: hidden;
+    color: var(--text);
+    border: none;
+    border-radius: 30px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.5));
+    backdrop-filter: blur(40px) saturate(200%);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        inset 0 -1px 1px rgba(255, 255, 255, 0.7),
+        inset 0 0 30px rgba(255, 255, 255, 0.7),
+        0 0 0 1px rgba(28, 30, 58, 0.07),
+        0 8px 20px rgba(28, 30, 58, 0.08),
+        0 36px 90px rgba(28, 30, 58, 0.22);
+    opacity: 1;
+    transform: none;
+    transition:
+        opacity 240ms ease,
+        transform 520ms var(--spring),
+        overlay 520ms allow-discrete,
+        display 520ms allow-discrete;
+}
+
+/* Leaving: sinks back down, quicker and without the bounce */
+.create-sheet:not([open]) {
+    opacity: 0;
+    transform: translateY(48px) scale(0.96);
+    transition:
+        opacity 200ms ease,
+        transform 220ms ease-in,
+        overlay 220ms allow-discrete,
+        display 220ms allow-discrete;
+}
+
+@starting-style {
+    .create-sheet[open] {
+        opacity: 0;
+        transform: translateY(64px) scale(0.94);
+    }
+}
+
+/* Light from above caught in the glass */
+.create-sheet::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 120px;
+    background: radial-gradient(70% 100% at 50% 0%, rgba(255, 255, 255, 0.7), transparent 70%);
+    pointer-events: none;
+}
+
+.create-sheet::backdrop {
+    background: rgba(28, 30, 58, 0);
+    transition:
+        background-color 300ms ease,
+        overlay 300ms allow-discrete,
+        display 300ms allow-discrete;
+}
+
+.create-sheet[open]::backdrop {
+    background: rgba(28, 30, 58, 0.16);
+}
+
+@starting-style {
+    .create-sheet[open]::backdrop {
+        background: rgba(28, 30, 58, 0);
+    }
+}
+
+.sheet-form {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    max-height: calc(100dvh - 48px);
+    padding: 10px 24px 22px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(28, 30, 58, 0.18) transparent;
+}
+
+.sheet-grabber {
+    align-self: center;
+    width: 40px;
+    height: 5px;
+    background: rgba(28, 30, 58, 0.16);
+    border-radius: 999px;
+}
+
+.sheet-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Tâche | Agenda switch with a glass thumb that slides */
+.segmented {
+    position: relative;
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    padding: 4px;
+    background: rgba(28, 30, 58, 0.06);
+    border-radius: 999px;
+    box-shadow: inset 0 1px 3px rgba(28, 30, 58, 0.10);
+}
+
+.segmented input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.segmented label {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 38px;
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--muted);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 200ms ease;
+}
+
+.segmented input:checked + label {
+    color: var(--text);
+}
+
+.segmented-thumb {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc(50% - 4px);
+    background: linear-gradient(160deg, #ffffff, rgba(255, 255, 255, 0.75));
+    border-radius: 999px;
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        inset 0 0 10px rgba(255, 255, 255, 0.9),
+        0 0 0 1px rgba(28, 30, 58, 0.06),
+        0 3px 10px rgba(28, 30, 58, 0.12);
+    transition: transform 480ms var(--spring);
+}
+
+.segmented:has(#kind-agenda:checked) .segmented-thumb {
+    transform: translateX(100%);
+}
+
+.sheet-fields {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    animation: fields-in 320ms var(--ease-out);
+}
+
+.sheet-fields,
+.sheet-fields-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+@keyframes fields-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+}
+
+/* Big borderless title, underlined in marigold when focused */
+.create-sheet .title-input {
+    height: 52px;
+    padding: 0 4px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid rgba(28, 30, 58, 0.10);
+    border-radius: 0;
+}
+
+.create-sheet .title-input:focus {
+    border-bottom-color: var(--sun);
+    box-shadow: none;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.field label,
+.field-label {
+    margin: 0 0 6px 2px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.optional {
+    font-weight: 500;
+    color: var(--faint);
+}
+
+.field-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: 10px;
+}
+
+.create-sheet textarea {
+    height: auto;
+    min-height: 64px;
+    padding: 10px 14px;
+    line-height: 1.4;
+    resize: vertical;
+}
+
+/* Agenda picker: a field that shows chips, opening a checklist below */
+.picker-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 44px;
+    padding: 7px 40px 7px 8px;
+    font: inherit;
+    text-align: left;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(28, 30, 58, 0.14);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+/* Chevron */
+.picker-btn::after {
+    content: "";
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--muted);
+    border-bottom: 2px solid var(--muted);
+    transform: translateY(-70%) rotate(45deg);
+    transition: transform 260ms var(--ease-out);
+}
+
+.picker-btn[aria-expanded="true"] {
+    border-color: var(--sun);
+    box-shadow: 0 0 0 3px rgba(245, 165, 36, 0.28);
+}
+
+.picker-btn[aria-expanded="true"]::after {
+    transform: translateY(-30%) rotate(225deg);
+}
+
+.picker-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.picker-placeholder {
+    padding-left: 6px;
+    color: var(--faint);
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    height: 28px;
+    padding: 0 11px 0 9px;
+    overflow: hidden;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: color-mix(in srgb, var(--agenda-color) 50%, #1c1e3a);
+    background: color-mix(in srgb, var(--agenda-color) 16%, #ffffff);
+    border-radius: 999px;
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.8),
+        0 0 0 1px color-mix(in srgb, var(--agenda-color) 30%, transparent);
+    animation: chip-in 300ms var(--spring);
+}
+
+.chip::before {
+    content: "";
+    flex: none;
+    width: 8px;
+    height: 8px;
+    background: var(--agenda-color);
+    border-radius: 50%;
+}
+
+@keyframes chip-in {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+}
+
+/* Opens by growing its row from 0 to its content height */
+.picker-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows 320ms var(--ease-out), opacity 200ms ease;
+}
+
+.picker-panel.open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
+
+.picker-clip {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.picker-options {
+    max-height: 200px;
+    margin: 6px 0 0;
+    padding: 6px;
+    overflow-y: auto;
+    list-style: none;
+    background: rgba(255, 255, 255, 0.72);
+    border-radius: var(--radius-sm);
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        0 0 0 1px rgba(28, 30, 58, 0.08),
+        0 8px 20px rgba(28, 30, 58, 0.08);
+}
+
+.picker-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    padding: 9px 10px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text);
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .picker-option:hover {
+        background: color-mix(in srgb, var(--agenda-color) 10%, transparent);
+    }
+}
+
+/* Checkbox drawn in the agenda's own color */
+.picker-option input[type="checkbox"] {
+    flex: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    border: 2px solid var(--agenda-color);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 120ms ease;
+}
+
+.picker-option input[type="checkbox"]:checked {
+    background: var(--agenda-color) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
+}
+
+/* Color swatches for a new agenda */
+.swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.swatch {
+    position: relative;
+    margin: 0;
+    cursor: pointer;
+}
+
+.swatch input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.swatch span {
+    display: block;
+    width: 34px;
+    height: 34px;
+    background: var(--swatch);
+    border-radius: 50%;
+    box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.6),
+        0 3px 8px color-mix(in srgb, var(--swatch) 40%, transparent);
+    transition: transform 260ms var(--spring), box-shadow 200ms ease;
+}
+
+.swatch input:checked + span {
+    transform: scale(1.08);
+    box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.6),
+        0 0 0 3px #ffffff,
+        0 0 0 5px var(--swatch),
+        0 6px 16px color-mix(in srgb, var(--swatch) 50%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .swatch:hover span {
+        transform: scale(1.08);
+    }
+}
+
+/* "Other color": rainbow until a color is chosen, the native picker sits on top */
+.swatch-custom:not([style]) span {
+    background: conic-gradient(#ef4444, #eab308, #10b981, #14b8a6, #3b82f6, #8b5cf6, #ec4899, #ef4444);
+    --swatch: #8b5cf6;
+}
+
+.swatch-custom input[type="color"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+/* How the agenda will look in the sidebar */
+.agenda-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    font-size: 0.875rem;
+    font-weight: 700;
+    background:
+        linear-gradient(160deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.05) 60%),
+        color-mix(in srgb, var(--agenda-color) 16%, rgba(255, 255, 255, 0.7));
+    border-radius: 14px;
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        0 0 0 1px color-mix(in srgb, var(--agenda-color) 22%, transparent),
+        0 6px 18px color-mix(in srgb, var(--agenda-color) 26%, transparent);
+    transition: background-color 300ms ease, box-shadow 300ms ease;
+}
+
+.agenda-preview .agenda-dot {
+    box-shadow:
+        0 0 0 4px color-mix(in srgb, var(--agenda-color) 26%, transparent),
+        0 0 14px color-mix(in srgb, var(--agenda-color) 70%, transparent);
+}
+
+.sheet-note {
+    margin: 0;
+    padding: 14px 16px;
+    font-size: 0.9375rem;
+    color: var(--muted);
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: var(--radius-sm);
+}
+
+.create-sheet .error {
+    margin: 0;
+}
+
+.sheet-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.sheet-footer .btn {
+    height: 44px;
+    padding: 0 20px;
+}
+
+.sheet-footer .btn.btn-primary {
+    margin-top: 0;
+    padding: 0 24px;
+    border-radius: 999px;
+    box-shadow:
+        inset 0 1px 1px rgba(255, 255, 255, 0.6),
+        0 6px 16px rgba(245, 165, 36, 0.40);
+}
+
 /* ---------- Small screens ---------- */
 @media (max-width: 860px) {
     .topbar {
@@ -811,22 +1685,87 @@ body:has(> .home) {
     .auth .card {
         padding: 32px 24px;
     }
+
+    .create-sheet {
+        width: calc(100vw - 16px);
+        margin-bottom: 8px;
+        border-radius: 26px;
+    }
+
+    .sheet-form {
+        max-height: calc(100dvh - 16px);
+        padding: 10px 16px 18px;
+    }
+}
+
+/* Small screens: the details dock at the bottom instead of beside the card */
+@media (max-width: 600px) {
+    .event-pop {
+        top: auto;
+        right: 8px;
+        bottom: 8px;
+        left: 8px;
+        width: auto;
+        max-width: none;
+        transform-origin: center bottom;
+    }
+
+    .event-pop[data-side="left"] {
+        transform-origin: center bottom;
+    }
+}
+
+@media (max-width: 480px) {
+    .field-row {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .field-row .field:first-child {
+        grid-column: 1 / -1;
+    }
 }
 
 /* ---------- Accessibility preferences ---------- */
 @media (prefers-reduced-motion: reduce) {
     .btn,
     .btn-icon-glyph,
-    .sidebar .card {
-        transition: opacity 150ms ease;
+    .agenda-item,
+    .agenda-dot,
+    .segmented-thumb,
+    .swatch span {
+        transition: opacity 150ms ease, color 150ms ease;
     }
 
-    .btn:active {
+    .btn:active,
+    .agenda-item:active {
         transform: none;
     }
 
+    .agenda-lens {
+        transition: opacity 150ms ease, background-color 150ms ease;
+    }
+
+    .event,
+    .chip,
+    .sheet-fields {
+        animation: none;
+    }
+
+    .create-sheet,
+    .create-sheet:not([open]),
+    .event-pop,
+    .event-pop:not([open]),
+    .calendar-hint.gone {
+        transform: none;
+        transition:
+            opacity 150ms ease,
+            overlay 150ms allow-discrete,
+            display 150ms allow-discrete;
+    }
+
     @starting-style {
-        .sidebar .card {
+        .create-sheet[open],
+        .event-pop[open] {
             transform: none;
         }
     }
@@ -835,7 +1774,10 @@ body:has(> .home) {
 @media (prefers-reduced-transparency: reduce) {
     .glass,
     .auth .card,
-    .week-head {
+    .week-head,
+    .create-sheet,
+    .event-pop,
+    .calendar-hint {
         background: #f6f7fb;
         backdrop-filter: none;
         -webkit-backdrop-filter: none;

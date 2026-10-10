@@ -72,6 +72,13 @@ const realApi ={
 
     // Creates an agenda for the logged-in user
     createAgenda: (name, color) => request('POST', '/api/agendas', { name, color }),
+
+    // Lists the taches (evenements) of every agenda of the logged-in user
+    getEvenements: () => request('GET', '/api/evenements'),
+
+    // Creates a tache in one agenda: { title, start, end, location, description }
+    createEvenement: (agendaId, data) =>
+        request('POST', '/api/agendas/' + encodeURIComponent(agendaId) + '/evenements', data),
 };
 
 
@@ -160,6 +167,36 @@ const mockApi = {
         agendas.push(agenda);
         mockWrite('mock_agendas', agendas);
         return agenda;
+    },
+
+    // Lists the taches of the agendas owned by the logged-in user
+    async getEvenements() {
+        const user = mockCurrentUser();
+        const ownIds = mockRead('mock_agendas').filter((a) => a.ownerId === user.id).map((a) => a.id);
+        return mockRead('mock_evenements').filter((e) => ownIds.includes(e.agendaId));
+    },
+
+    // Creates a tache in an agenda of the logged-in user;
+    // 404 if the agenda is not found, 400 if the title is empty or the end is not after the start
+    async createEvenement(agendaId, { title, start, end, location = '', description = '' }) {
+        await this.getAgenda(agendaId);
+        if (!title || !title.trim()) throw new ApiError(400, 'Titre vide.');
+        const s = new Date(start);
+        const e = new Date(end);
+        if (isNaN(s) || isNaN(e) || e <= s) throw new ApiError(400, 'Dates invalides.');
+        const evenement = {
+            id: crypto.randomUUID(),
+            agendaId,
+            title: title.trim(),
+            start: s.toISOString(),
+            end: e.toISOString(),
+            location,
+            description,
+        };
+        const evenements = mockRead('mock_evenements');
+        evenements.push(evenement);
+        mockWrite('mock_evenements', evenements);
+        return evenement;
     },
 };
 

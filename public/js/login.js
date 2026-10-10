@@ -5,8 +5,8 @@ const errorBox = document.getElementById('error');
 const submitBtn = form.querySelector('button[type="submit"]');
 
 /**
- * Function that shows an error message if wrong identifiers
- * @param message the message to be shown
+ * Shows an error message above the login form (empty fields, wrong identifiers, server down)
+ * @param {string} message the message to show
  */
 function showError(message){
     errorBox.textContent = message;
