@@ -1,0 +1,3 @@
+<%# Error box of a page. Hidden while there is no message; the page scripts also fill it.
+    Locals: error (optional message sent by the server) %>
+<p id="error" class="error" role="alert"<%= locals.error ? '' : ' hidden' %>><%= locals.error || '' %></p>

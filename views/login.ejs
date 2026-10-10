@@ -1,0 +1,31 @@
+<%# Login page (route "/"). Locals: error (optional), username (optional, refills the field) %>
+<!doctype html>
+<html lang="fr">
+    <%- include('partials/head', { title: 'Connexion' }) %>
+    <body>
+        <header class="topbar">
+            <%- include('partials/brand', { href: '/' }) %>
+        </header>
+
+        <main class="auth">
+            <form id="login-form" class="card" method="post" action="/login" novalidate>
+                <h1>Connexion</h1>
+                <p class="lede">Retrouvez les agendas de votre équipe.</p>
+
+                <%- include('partials/error') %>
+
+                <label for="username">Nom d'utilisateur</label>
+                <input id="username" name="username" type="text" autocomplete="username" value="<%= locals.username || '' %>" autofocus>
+
+                <label for="password">Mot de passe</label>
+                <input id="password" name="password" type="password" autocomplete="current-password">
+
+                <button type="submit" class="btn btn-primary">Se connecter</button>
+
+                <p class="hint">Pas encore de compte? <a href="/register">Créer un compte</a></p>
+            </form>
+        </main>
+
+        <%- include('partials/scripts', { script: 'login.js' }) %>
+    </body>
+</html>

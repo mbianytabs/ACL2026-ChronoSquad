@@ -31,7 +31,7 @@ form.addEventListener("submit", async (event) => {
     submitBtn.disabled = true;
     try {
         await api.register(username, password); 
-        window.location.href = "../index.html"; 
+        window.location.href = "/"; 
     } catch (err) {
         
         if (err.status === 409) {

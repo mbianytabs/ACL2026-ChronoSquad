@@ -1,4 +1,4 @@
-// login.js: logic of index.html
+// login.js: logic of the login page (views/login.ejs)
 
 const form = document.getElementById('login-form');
 const errorBox = document.getElementById('error');
@@ -15,7 +15,7 @@ function showError(message){
 
 // Already logged in? Go straight to the home page.
 api.getMe()
-    .then(() => { window.location.href = 'templates/agendas.html'; })
+    .then(() => { window.location.href = '/agendas'; })
     .catch(() => { /* not logged in: stay here */ });
 
 form.addEventListener('input', () => { errorBox.hidden = true; });
@@ -35,7 +35,7 @@ form.addEventListener('submit', async (event) => {
     submitBtn.disabled = true;
     try {
         await api.login(username, password);
-        window.location.href = 'templates/agendas.html';
+        window.location.href = '/agendas';
     } catch (err) {
         if (err.status === 401) showError('Identifiants invalides.');
         else if (err.status === 0) showError('Serveur injoignable. Réessayez.');

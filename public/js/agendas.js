@@ -1,4 +1,4 @@
-// agendas.js: logic of agendas.html (home page)
+// agendas.js: logic of the home page (views/agendas.ejs)
 
 const userLabel = document.getElementById('current-user');
 const logoutBtn = document.getElementById('logout-btn');
@@ -75,7 +75,7 @@ function showError(message) {
  * Sends the user back to the login page (used when the session is missing or expired)
  */
 function goToLogin() {
-    window.location.href = '../index.html';
+    window.location.href = '/';
 }
 
 /**

@@ -1,14 +1,24 @@
+<%# Home page (route "/agendas"). Locals: user (optional, the logged-in user), error (optional).
+    The agendas and taches are loaded and drawn by agendas.js. %>
+<%
+    // Colors offered for a new agenda
+    const swatches = [
+        { value: '#3b82f6', name: 'Bleu' },
+        { value: '#8b5cf6', name: 'Violet' },
+        { value: '#ec4899', name: 'Rose' },
+        { value: '#ef4444', name: 'Rouge' },
+        { value: '#f97316', name: 'Orange' },
+        { value: '#eab308', name: 'Jaune' },
+        { value: '#10b981', name: 'Vert' },
+        { value: '#14b8a6', name: 'Turquoise' },
+    ];
+%>
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mes agendas · ChronoSquad</title>
-    <link rel="stylesheet" href="../css/style.css">
-</head>
+<%- include('partials/head', { title: 'Mes agendas' }) %>
 <body>
 <header class="topbar">
-    <a class="brand" href="agendas.html"><span class="brand-mark" aria-hidden="true"></span>ChronoSquad</a>
+    <%- include('partials/brand', { href: '/agendas' }) %>
 
     <!-- Week navigation -->
     <div class="week-nav">
@@ -19,7 +29,7 @@
     </div>
 
     <div class="user">
-        <span id="current-user"></span>
+        <span id="current-user"><%= locals.user ? user.username : '' %></span>
         <button id="logout-btn" type="button" class="btn btn-glass">Se déconnecter</button>
     </div>
 </header>
@@ -34,7 +44,7 @@
                 <span>Créer</span>
             </button>
 
-            <p id="error" class="error" role="alert" hidden></p>
+            <%- include('partials/error') %>
 
             <section class="mini-cal" aria-label="Choisir une semaine">
                 <div class="mini-head">
@@ -155,14 +165,9 @@
             <div class="field">
                 <span id="color-label" class="field-label">Couleur</span>
                 <div class="swatches" role="radiogroup" aria-labelledby="color-label">
-                    <label class="swatch" style="--swatch: #3b82f6"><input type="radio" name="color" value="#3b82f6" checked aria-label="Bleu"><span></span></label>
-                    <label class="swatch" style="--swatch: #8b5cf6"><input type="radio" name="color" value="#8b5cf6" aria-label="Violet"><span></span></label>
-                    <label class="swatch" style="--swatch: #ec4899"><input type="radio" name="color" value="#ec4899" aria-label="Rose"><span></span></label>
-                    <label class="swatch" style="--swatch: #ef4444"><input type="radio" name="color" value="#ef4444" aria-label="Rouge"><span></span></label>
-                    <label class="swatch" style="--swatch: #f97316"><input type="radio" name="color" value="#f97316" aria-label="Orange"><span></span></label>
-                    <label class="swatch" style="--swatch: #eab308"><input type="radio" name="color" value="#eab308" aria-label="Jaune"><span></span></label>
-                    <label class="swatch" style="--swatch: #10b981"><input type="radio" name="color" value="#10b981" aria-label="Vert"><span></span></label>
-                    <label class="swatch" style="--swatch: #14b8a6"><input type="radio" name="color" value="#14b8a6" aria-label="Turquoise"><span></span></label>
+                    <% swatches.forEach((swatch, i) => { %>
+                    <label class="swatch" style="--swatch: <%= swatch.value %>"><input type="radio" name="color" value="<%= swatch.value %>"<%= i === 0 ? ' checked' : '' %> aria-label="<%= swatch.name %>"><span></span></label>
+                    <% }) %>
                     <label class="swatch swatch-custom" title="Autre couleur">
                         <input id="color-custom-radio" type="radio" name="color" value="#1c1e3a" aria-label="Autre couleur">
                         <span></span>
@@ -220,7 +225,6 @@
     </div>
 </dialog>
 
-<script src="../js/api.js"></script>
-<script src="../js/agendas.js"></script>
+<%- include('partials/scripts', { script: 'agendas.js' }) %>
 </body>
 </html>
