@@ -30,8 +30,7 @@ Other computers on the same network can connect with `http://<server-ip>:3000`.
 ```
 ├── server.js      # entry point (Express, port 3000)
 ├── src/           # back-end: routes, services, models, storage
-├── views/         # front-end pages: EJS templates (+ partials/)
-├── public/        # front-end static files: CSS, JavaScript
+├── public/        # front-end: HTML, CSS, JavaScript
 ├── data/          # saved data (JSON files, created automatically)
 └── sprintN/       # Scrum documents for each sprint
 ```

@@ -1,58 +1,21 @@
-import http from "http";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+import { createServer } from "node:http";
+import { app } from "./app.js";
 
+// Le sujet impose un serveur unique sur le port 3000.
 const PORT = 3000;
+const server = createServer(app);
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Le dossier public se trouve un niveau au-dessus de backend
-const publicDir = path.join(__dirname, "..", "public");
-
-const mimeTypes = {
-    ".html": "text/html",
-    ".css": "text/css",
-    ".js": "text/javascript",
-    ".json": "application/json",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".svg": "image/svg+xml"
-};
-
-const server = http.createServer((request, response) => {
-    let urlPath = request.url;
-
-    // Quand on demande "/", on sert index.html
-    if (urlPath === "/") {
-        urlPath = "/index.html";
+server.on("error", (error) => {
+    if (error.code === "EADDRINUSE") {
+        console.error(`Le port ${PORT} est déjà utilisé. Arrêtez l'autre serveur puis relancez npm start.`);
+    } else {
+        console.error("Impossible de démarrer le serveur :", error.message);
     }
-
-    const filePath = path.join(publicDir, urlPath);
-
-    fs.readFile(filePath, (error, data) => {
-        if (error) {
-            response.writeHead(404, {
-                "Content-Type": "text/plain; charset=utf-8"
-            });
-
-            response.end("404 - Fichier non trouvé");
-            return;
-        }
-
-        const extension = path.extname(filePath);
-        const contentType = mimeTypes[extension] || "application/octet-stream";
-
-        response.writeHead(200, {
-            "Content-Type": contentType
-        });
-
-        response.end(data);
-    });
+    process.exitCode = 1;
 });
 
-server.listen(PORT, () => {
-    console.log(`Serveur démarré sur http://localhost:${PORT}`);
+// Accepte aussi les navigateurs des autres machines du réseau local.
+server.listen(PORT, "0.0.0.0", () => {
+    console.log(`ChronoSquad : http://localhost:${PORT}`);
+    console.log(`Réseau local : http://<adresse-ip-du-serveur>:${PORT}`);
 });
