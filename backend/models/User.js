@@ -16,8 +16,8 @@ export class User{
      * @param {*} createdAt
      */
     constructor(id, name, pwd,createdAt = new Date()){
-         if (!id || !name || !pwd) {
-            throw new Error("id, username et passwordHash sont obligatoires");
+         if ((id !== null && (!Number.isSafeInteger(id) || id < 1)) || !name || !pwd) {
+            throw new Error("id doit être un entier positif ou null avant création ; username et passwordHash sont obligatoires");
         }
         this.#id = id;
         this.#username = name;

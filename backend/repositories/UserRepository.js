@@ -20,8 +20,8 @@ export class UserRepository {
     async create(user) {
         // toJSON() masque le hash ; toRecord() le conserve pour SQLite.
         const record = user.toRecord();
-        this.db.run("INSERT INTO user (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)",
-            [record.id, record.username, record.passwordHash, new Date(record.createdAt).toISOString()]);
-        return user;
+        const result = this.db.run("INSERT INTO user (username, password_hash, created_at) VALUES (?, ?, ?)",
+            [record.username, record.passwordHash, new Date(record.createdAt).toISOString()]);
+        return this.findById(Number(result.lastInsertRowid));
     }
 }

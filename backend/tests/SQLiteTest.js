@@ -12,22 +12,64 @@ import { EvenementRepository } from "../repositories/EvenementRepository.js";
 import { User } from "../models/User.js";
 import { Agenda } from "../models/Agenda.js";
 import { Evenement } from "../models/Evenement.js";
+import { DatabaseSync } from "node:sqlite";
 
 const date = "2026-10-11T10:00:00.000Z";
 const makeEvent = (id, agendaId = "a1") => new Evenement(id, agendaId, "Cours", date, "2026-10-11T11:00:00.000Z");
 
+test("migration des anciens identifiants : comptes, agendas et rendez-vous conservés", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "chronosquad-migration-"));
+    const path = join(directory, "old.sqlite");
+    let db;
+    try {
+        const old = new DatabaseSync(path);
+        const schema = (await readFile(new URL("../storage/schema.sql", import.meta.url), "utf8"))
+            .replace("id INTEGER PRIMARY KEY AUTOINCREMENT", "id TEXT PRIMARY KEY NOT NULL")
+            .replace("owner_id INTEGER", "owner_id TEXT");
+        try {
+            old.exec(schema);
+            old.exec("PRAGMA user_version = 1");
+            old.prepare("INSERT INTO user VALUES (?, ?, ?, ?)").run("old-uuid", "alice", "hash-conserve", date);
+            old.prepare("INSERT INTO user VALUES (?, ?, ?, ?)").run("test-user", "sqlite_demo", "hash-demo", date);
+            old.prepare("INSERT INTO agenda VALUES (?, ?, ?, ?, ?)").run("a1", "Personnel", "#3b82f6", "old-uuid", date);
+            old.prepare("INSERT INTO rendezvous VALUES (?, ?, ?, ?, ?, ?, ?)")
+                .run("e1", "a1", "Cours", date, "2026-10-11T11:00:00.000Z", "Salle", "Description");
+        } finally { old.close(); }
+        db = new SQLiteDatabase(path);
+        assert.equal(db.get("PRAGMA user_version").user_version, 2);
+        assert.equal(db.get("PRAGMA foreign_keys").foreign_keys, 1);
+        assert.deepEqual(db.all("PRAGMA foreign_key_check"), []);
+        const user = await new UserRepository(db).findByUsername("alice");
+        assert.equal(user.id, 1);
+        assert.equal(user.toRecord().passwordHash, "hash-conserve");
+        assert.equal((await new UserRepository(db).findByUsername("sqlite_demo")).id, 2);
+        assert.equal((await new AgendaRepository(db).findById("a1")).ownerId, 1);
+        assert.equal((await new EvenementRepository(db).findById("e1")).agendaId, "a1");
+        assert.deepEqual(await initializeDatabase(db), { imported: false });
+        assert.equal((await new UserRepository(db).create(new User(null, "charlie", "hash"))).id, 3);
+        db.close();
+        db = new SQLiteDatabase(path);
+        assert.equal((await new UserRepository(db).findByUsername("charlie")).id, 3);
+        db.run("DELETE FROM user WHERE id = 3");
+        assert.equal((await new UserRepository(db).create(new User(null, "david", "hash"))).id, 4);
+    } finally {
+        db?.close();
+        await rm(directory, { recursive: true, force: true });
+    }
+});
+
 test("tables au singulier, relations SQL, objets métier et CRUD des rendez-vous", async () => {
     const db = new SQLiteDatabase(":memory:");
     try {
-        assert.deepEqual(db.all("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").map(r => r.name),
+        assert.deepEqual(db.all("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").map(r => r.name),
             ["agenda", "rendezvous", "user"]);
         assert.equal(db.get("PRAGMA foreign_keys").foreign_keys, 1);
         const users = new UserRepository(db);
         const agendas = new AgendaRepository(db);
         const events = new EvenementRepository(db);
         const hash = await argon2.hash("secret");
-        await users.create(new User("u1", "alice", hash, date));
-        await users.create(new User("u2", "bob", hash, date));
+        await users.create(new User(null, "alice", hash, date));
+        await users.create(new User(null, "bob", hash, date));
         const user = await users.findByUsername("alice");
         assert.ok(user instanceof User);
         assert.equal(await user.verifyPassword("secret"), true);
@@ -35,12 +77,12 @@ test("tables au singulier, relations SQL, objets métier et CRUD des rendez-vous
         assert.equal(user.toRecord().passwordHash, hash);
         assert.equal(JSON.stringify(user).includes("passwordHash"), false);
         assert.equal(await users.findByUsername("' OR 1=1 --"), null);
-        await assert.rejects(users.create(new User("u3", "alice", hash)), /UNIQUE/);
-        await agendas.create(new Agenda("a1", "Personnel", "u1"));
-        await agendas.create(new Agenda("a2", "Bob", "u2"));
-        assert.deepEqual((await agendas.findByOwner("u1")).map(a => a.id), ["a1"]);
+        await assert.rejects(users.create(new User(null, "alice", hash)), /UNIQUE/);
+        await agendas.create(new Agenda("a1", "Personnel", 1));
+        await agendas.create(new Agenda("a2", "Bob", 2));
+        assert.deepEqual((await agendas.findByOwner(1)).map(a => a.id), ["a1"]);
         assert.ok(await agendas.findById("a1") instanceof Agenda);
-        await assert.rejects(agendas.create(new Agenda("bad", "Invalide", "absent")), /FOREIGN KEY/);
+        await assert.rejects(agendas.create(new Agenda("bad", "Invalide", 999)), /FOREIGN KEY/);
         await events.create(makeEvent("e1"));
         await events.create(makeEvent("e2", "a2"));
         assert.deepEqual((await events.findByAgenda("a1")).map(e => e.id), ["e1"]);
@@ -65,13 +107,13 @@ test("les transactions annulent toutes les écritures en cas d'erreur", () => {
     const db = new SQLiteDatabase(":memory:");
     try {
         assert.throws(() => db.transaction(() => {
-            db.run("INSERT INTO user VALUES (?, ?, ?, ?)", ["u1", "alice", "hash", date]);
-            db.run("INSERT INTO agenda VALUES (?, ?, ?, ?, ?)", ["a1", "Agenda", "#3b82f6", "absent", date]);
+            db.run("INSERT INTO user VALUES (?, ?, ?, ?)", [1, "alice", "hash", date]);
+            db.run("INSERT INTO agenda VALUES (?, ?, ?, ?, ?)", ["a1", "Agenda", "#3b82f6", 999, date]);
         }), /FOREIGN KEY/);
         assert.equal(db.get("SELECT count(*) AS n FROM user").n, 0);
         assert.throws(() => db.transaction(async () => {}), /synchrone/);
         assert.throws(() => db.transaction(() => {
-            db.run("INSERT INTO user VALUES (?, ?, ?, ?)", ["u1", "alice", "hash", date]);
+            db.run("INSERT INTO user VALUES (?, ?, ?, ?)", [1, "alice", "hash", date]);
             return Promise.resolve();
         }), /Promise/);
         assert.equal(db.get("SELECT count(*) AS n FROM user").n, 0);
@@ -84,10 +126,11 @@ test("la base conserve les données après fermeture et réouverture", async () 
     try {
         const path = join(directory, "nested", "test.sqlite");
         db = new SQLiteDatabase(path);
-        await new UserRepository(db).create(new User("u1", "alice", "hash", date));
+        await new UserRepository(db).create(new User(null, "alice", "hash", date));
         db.close();
         db = new SQLiteDatabase(path);
-        assert.equal((await new UserRepository(db).findById("u1")).username, "alice");
+        assert.equal((await new UserRepository(db).findById(1)).username, "alice");
+        assert.equal((await new UserRepository(db).create(new User(null, "bob", "hash", date))).id, 2);
     } finally {
         db?.close();
         await rm(directory, { recursive: true, force: true });
@@ -99,10 +142,10 @@ test("import initial des vrais JSON, hachage et absence de réimport au redémar
     try {
         const result = await initializeDatabase(db);
         assert.deepEqual(result, { imported: true, users: 3, agendas: 3, rendezvous: 4 });
-        const user = await new UserRepository(db).findById("user1");
+        const user = await new UserRepository(db).findById(1);
         assert.equal(await user.verifyPassword("alice123"), true);
         assert.match(user.toRecord().passwordHash, /^\$argon2/);
-        assert.deepEqual((await new AgendaRepository(db).findByOwner("user1")).map(a => a.id), ["agenda1", "agenda2"]);
+        assert.deepEqual((await new AgendaRepository(db).findByOwner(1)).map(a => a.id), ["agenda1", "agenda2"]);
         assert.equal((await new EvenementRepository(db).findByAgenda("agenda1")).length, 2);
         db.run("DELETE FROM rendezvous WHERE id = 'rdv1'");
         assert.deepEqual(await initializeDatabase(db), { imported: false });
@@ -135,7 +178,7 @@ test("sans fichiers historiques, initialisation vide et refus d'écraser une bas
     const directory = await mkdtemp(join(tmpdir(), "chronosquad-empty-"));
     const db = new SQLiteDatabase(":memory:");
     try {
-        await new UserRepository(db).create(new User("u1", "alice", "hash", date));
+        await new UserRepository(db).create(new User(null, "alice", "hash", date));
         await assert.rejects(initializeDatabase(db, directory), /contient déjà/);
         db.run("DELETE FROM user");
         assert.deepEqual(await initializeDatabase(db, directory), { imported: true, users: 0, agendas: 0, rendezvous: 0 });

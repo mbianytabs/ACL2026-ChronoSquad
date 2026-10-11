@@ -12,13 +12,33 @@ export class SQLiteDatabase {
         this.connection = new DatabaseSync(this.filePath);
         try {
             this.connection.exec("PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
-            if (this.get("PRAGMA user_version").user_version > 1) {
+            if (this.get("PRAGMA user_version").user_version > 2) {
                 throw new Error("Version SQLite plus récente que celle supportée par ce serveur.");
             }
+            this.migrateUserIds();
             this.initializeSchema();
         } catch (error) {
             this.close();
             throw error;
+        }
+    }
+
+    migrateUserIds() {
+        const column = this.all("PRAGMA table_info(user)").find(c => c.name === "id");
+        if (!column || column.type === "INTEGER") return;
+        const sql = readFileSync(new URL("./migrate-user-ids.sql", import.meta.url), "utf8");
+        this.connection.exec("PRAGMA foreign_keys = OFF");
+        try {
+            this.transaction(() => {
+                // Ne pas migrer une ancienne base déjà incohérente.
+                if (this.all("PRAGMA foreign_key_check").length) throw new Error("Relations SQLite invalides avant migration.");
+                const version = this.get("PRAGMA user_version").user_version;
+                this.connection.exec(sql);
+                if (this.all("PRAGMA foreign_key_check").length) throw new Error("Relations SQLite invalides après migration.");
+                if (version === 1) this.connection.exec("PRAGMA user_version = 2");
+            });
+        } finally {
+            this.connection.exec("PRAGMA foreign_keys = ON");
         }
     }
 

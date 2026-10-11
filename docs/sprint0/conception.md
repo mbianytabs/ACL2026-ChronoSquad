@@ -17,13 +17,13 @@ flowchart LR
     P --> V[Vues EJS]
     E --> S[Ressources public/]
     E --> A[Routes API /api]
-    A -. à implémenter .-> CT[Contrôleurs + authentification]
-    CT -. à connecter .-> R[Repositories]
+    A --> CT[UserController / AuthController + requireAuth]
+    CT --> R[Repositories]
     R --> DB[SQLiteDatabase : connexion partagée]
     DB --> F[(data/chronosquad.sqlite)]
 ```
 
-**État actuel :** les pages, Express, SQLite et les repositories sont opérationnels. Les routes API `GET /api/health` et `GET /api/test/user-agenda` sont implémentées. L'authentification et les contrôleurs métier restent à réaliser ; le remplacement du stockage ne les ajoute pas.
+**État actuel :** les pages, Express, SQLite, les repositories et l'authentification sont opérationnels. L'inscription, la connexion, l'utilisateur courant et la déconnexion sont implémentés, ainsi que `GET /api/health` et `GET /api/test/user-agenda`. Les contrôleurs d'agendas et de rendez-vous restent à réaliser. Voir [le guide d'authentification](authentification.md) et la page temporaire `/test/auth`.
 
 ## 2. Choix techniques
 
@@ -34,17 +34,17 @@ flowchart LR
 | Persistance | SQLite via `node:sqlite` / `DatabaseSync` | SQL embarqué, sans installation d'un service externe |
 | Runtime | Node.js >= 22.13.0 ; Node.js 24 LTS conseillé | Disponibilité de `node:sqlite` sans option de lancement |
 | Mots de passe | Argon2, utilisé par le modèle `User` | Le hash est conservé en base, exclu de `User.toJSON()` |
-| Identifiants | Chaînes ; UUID pour les futurs nouveaux objets | Préserve aussi les identifiants des données historiques |
+| Identifiants utilisateurs | Entiers auto-incrémentés par SQLite : 1, 2, 3… | Génération par la base, sans compteur JavaScript ; agendas et rendez-vous gardent leurs identifiants existants |
 | Relations | Clés étrangères activées à chaque connexion | Empêche agendas et rendez-vous orphelins |
 | Requêtes | Paramètres SQL `?` | Valeurs séparées du texte SQL |
 | Transactions | `BEGIN IMMEDIATE / COMMIT / ROLLBACK` | Import atomique, écritures groupées cohérentes |
-| Sessions | À implémenter | Le stockage SQLite des données métier ne connecte pas un utilisateur |
+| Sessions | `express-session`, cookie HttpOnly et SameSite=Lax | Sessions de 8 heures en mémoire pour le sprint local ; reconnexion après redémarrage |
 
 La connexion SQLite est synchrone et partagée dans le processus serveur. Les méthodes des repositories restent asynchrones pour conserver une interface utilisable avec `await`. Une transaction doit recevoir une fonction synchrone : effectuer les opérations asynchrones, comme le hachage, avant la transaction.
 
 ## 3. Diagramme de classes
 
-Le diagramme représente les classes actuellement utilisées pour le stockage. La classe JavaScript `Evenement` représente un rendez-vous et correspond à la table **rendezvous**. Les contrôleurs et le middleware d'authentification existants étant encore vides, ils ne sont pas représentés comme des composants fonctionnels.
+Le diagramme représente le stockage et les contrôleurs d'authentification implémentés. La classe JavaScript `Evenement` représente un rendez-vous et correspond à la table **rendezvous**. Les contrôleurs d'agendas et de rendez-vous sont encore vides.
 
 La version PlantUML se trouve dans [classes-sqlite.puml](classes-sqlite.puml).
 
@@ -52,7 +52,7 @@ La version PlantUML se trouve dans [classes-sqlite.puml](classes-sqlite.puml).
 classDiagram
 direction LR
 class User {
-    +String id
+    +Number id
     +String username
     -String passwordHash
     +Date createdAt
@@ -64,7 +64,7 @@ class Agenda {
     +String id
     +String name
     +String color
-    +String ownerId
+    +Number ownerId
     +Date createdAt
     +rename(name)
     +changeColor(color)
@@ -119,6 +119,16 @@ class EvenementRepository {
     +update(id, evenement)
     +delete(id)
 }
+class UserController {
+    +register(req, res)
+    +getCurrentUser(req, res)
+}
+class AuthController {
+    +login(req, res)
+    +logout(req, res)
+}
+UserController --> UserRepository
+AuthController --> UserRepository
 User "1" --> "0..*" Agenda : possède
 Agenda "1" --> "0..*" Evenement : contient
 UserRepository --> SQLiteDatabase : table user
@@ -137,11 +147,11 @@ Le SQL exécutable est dans `backend/storage/schema.sql`.
 
 | Table | Colonnes |
 |-------|----------|
-| `user` | `id` PK, `username` UNIQUE, `password_hash`, `created_at` |
-| `agenda` | `id` PK, `name`, `color`, `owner_id` FK vers `user.id`, `created_at` |
+| `user` | `id` INTEGER PK AUTOINCREMENT, `username` UNIQUE, `password_hash`, `created_at` |
+| `agenda` | `id` PK, `name`, `color`, `owner_id` INTEGER FK vers `user.id`, `created_at` |
 | `rendezvous` | `id` PK, `agenda_id` FK vers `agenda.id`, `title`, `start`, `end`, `location`, `description` |
 
-Les identifiants et les dates sont stockés en TEXT ; les repositories écrivent les dates en ISO 8601 UTC et reconstruisent les objets métier à la lecture. Les noms SQL en snake_case sont convertis en attributs JavaScript camelCase.
+Les identifiants utilisateurs et les références `owner_id` sont des INTEGER. Les identifiants d'agendas et de rendez-vous ainsi que les dates sont stockés en TEXT ; les repositories écrivent les dates en ISO 8601 UTC et reconstruisent les objets métier à la lecture. Les noms SQL en snake_case sont convertis en attributs JavaScript camelCase.
 
 Les tables sont STRICT. Le schéma impose des noms/titres non vides, une couleur hexadécimale et une fin postérieure au début. Deux index accélèrent la recherche des agendas d'un utilisateur et des rendez-vous d'un agenda.
 
@@ -163,7 +173,9 @@ Les clés étrangères garantissent les relations. Les futurs contrôleurs devro
 
 Au démarrage :
 1. `SQLiteDatabase` ouvre/crée `data/chronosquad.sqlite`, active les clés étrangères et initialise les tables.
-2. `initializeDatabase()` lit `PRAGMA user_version`. La valeur 1 signifie que l'initialisation et l'import sont terminés.
+2. `initializeDatabase()` lit `PRAGMA user_version`. Une valeur supérieure ou égale à 1 signifie que l'initialisation et l'import sont terminés.
+La version actuelle est 2. Une base de version 1 avec des identifiants utilisateurs TEXT est migrée automatiquement vers des entiers par `migrate-user-ids.sql`, avec conservation des comptes, hashes, agendas et rendez-vous. Les sessions antérieures demandent une reconnexion.
+
 3. Si la valeur est 0 et les trois tables sont vides, les éventuels `users.json`, `agendas.json` et `evenements.json` sont lus. Les fichiers absents correspondent à des listes vides.
 4. Les mots de passe d'exemple en clair sont hachés avec Argon2. Les hashes Argon2 existants sont conservés ; un autre format de hash entraîne un refus explicite.
 5. Les utilisateurs, agendas, rendez-vous et le marqueur de version sont enregistrés dans une même transaction.
@@ -186,10 +198,10 @@ npm test
 - `npm run test:storage` : tests SQLite isolés, sans modifier la base de l'application.
 - `npm run test:server` : tests HTTP / EJS.
 
-Lors du premier lancement avec les exemples historiques : 3 utilisateurs, 3 agendas et 4 rendez-vous sont importés. Les identifiants d'exemple et mots de passe restent les mêmes ; leur stockage devient haché.
+Lors du premier lancement avec les exemples historiques : 3 utilisateurs, 3 agendas et 4 rendez-vous sont importés. Les mots de passe restent les mêmes, avec un stockage haché ; les utilisateurs reçoivent des identifiants entiers et les propriétaires des agendas sont adaptés.
 
 Après cet import, `backend/storage/test-data.sql` insère également un utilisateur
-de démonstration (`test-user`, nom `sqlite_demo`) et son agenda (`test-agenda`).
+de démonstration (nom `sqlite_demo`, identifiant entier attribué par SQLite) et son agenda (`test-agenda`).
 Le fichier est exécuté dans une transaction à chaque démarrage ; les identifiants
 existants ne sont pas remplacés et aucun doublon n'est créé. Si ces données de
 démonstration sont supprimées, elles sont recréées au prochain démarrage.
@@ -200,6 +212,6 @@ depuis SQLite sous la forme `{ "user": {...}, "agenda": {...} }`.
 Le mot de passe et son hash ne sont jamais renvoyés. Cette route ne réalise
 aucune connexion et n'affiche pas les utilisateurs réels de l'application.
 
-La prochaine étape métier sera de relier les routes API aux contrôleurs, à l'authentification et aux repositories. Les URL doivent être alignées sur le front existant (`/api/users`, `/api/users/me`, `/api/auth/login`, `/api/auth/logout`, `/api/agendas`, `/api/evenements`, etc.). Le nom SQL `rendezvous` n'impose aucun renommage de ces URL.
+Les routes d'authentification correspondent au front existant : `POST /api/users`, `GET /api/users/me`, `POST /api/auth/login` et `POST /api/auth/logout`. La prochaine étape métier sera d'implémenter les contrôleurs d'agendas et de rendez-vous et de protéger leurs routes avec `requireAuth`. Le nom SQL `rendezvous` n'impose aucun renommage des URL `/api/evenements` du front.
 
 Documentation officielle : [SQLite dans Node.js](https://nodejs.org/api/sqlite.html).

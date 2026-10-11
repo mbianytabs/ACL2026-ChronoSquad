@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { apiRouter } from "./routes/Routes.js";
 import { pageRouter } from "./routes/PageRoutes.js";
 import { errorHandler } from "./middleware/ErrorHandler.js";
+import { sessionMiddleware } from "./middleware/Session.js";
 
 export const app = express();
 const publicPath = fileURLToPath(new URL("../public/", import.meta.url));
@@ -19,7 +20,7 @@ app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: false, limit: "100kb" }));
 
 // L'API passe avant les fichiers publics : /api répond toujours en JSON.
-app.use("/api", apiRouter);
+app.use("/api", sessionMiddleware, apiRouter);
 app.use("/", pageRouter);
 
 // Seul public/ est accessible ; backend/ et data/ restent privés.

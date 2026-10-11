@@ -5,7 +5,7 @@ skinparam classAttributeIconSize 0
 
 package "Modèles métier existants" {
     class User {
-        +id : String
+        +id : Integer
         +username : String
         -passwordHash : String
         +createdAt : Date
@@ -17,7 +17,7 @@ package "Modèles métier existants" {
         +id : String
         +name : String
         +color : String
-        +ownerId : String
+        +ownerId : Integer
         +createdAt : Date
         +rename(name)
         +changeColor(color)
@@ -72,6 +72,7 @@ package "Stockage" {
         +connection : DatabaseSync
         +SQLiteDatabase(filePath)
         +initializeSchema()
+        +migrateUserIds()
         +get(sql, params)
         +all(sql, params)
         +run(sql, params)
@@ -88,6 +89,24 @@ package "Stockage" {
     end note
 }
 
+package "Authentification" {
+    class UserController {
+        {static} +register(req, res)
+        {static} +getCurrentUser(req, res)
+    }
+    class AuthController {
+        {static} +login(req, res)
+        {static} +logout(req, res)
+    }
+    note right of AuthController
+        express-session : cookie HttpOnly.
+        userId conservé en session côté serveur.
+        requireAuth() recharge le User et protège
+        GET /api/users/me.
+    end note
+}
+UserController --> UserRepository
+AuthController --> UserRepository
 User "1" --> "0..*" Agenda : possède
 Agenda "1" --> "0..*" Evenement : contient
 UserRepository --> SQLiteDatabase : SQL sur user
@@ -110,8 +129,8 @@ note bottom of EvenementRepository
     SELECT * FROM rendezvous WHERE agenda_id = ?
 end note
 legend bottom
-    Diagramme du stockage implémenté.
-    Contrôleurs et authentification encore à réaliser.
+    Stockage et authentification implémentés.
+    Contrôleurs d'agendas et de rendez-vous encore à réaliser.
     Aucun JsonStore dans le stockage actif.
 endlegend
 @enduml

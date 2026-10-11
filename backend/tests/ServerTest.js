@@ -42,7 +42,7 @@ test("la route de test renvoie un utilisateur et son agenda depuis SQLite sans e
     assert.equal(response.status, 200);
     assert.match(response.headers.get("content-type"), /application\/json/);
     const data = await response.json();
-    assert.equal(data.user.id, "test-user");
+    assert.equal(data.user.id, 1);
     assert.equal(data.user.username, "sqlite_demo");
     assert.equal(data.agenda.id, "test-agenda");
     assert.equal(data.agenda.ownerId, data.user.id);

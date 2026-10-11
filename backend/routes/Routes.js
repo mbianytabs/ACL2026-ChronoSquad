@@ -2,8 +2,17 @@ import { Router } from "express";
 import createError from "http-errors";
 import { UserRepository } from "../repositories/UserRepository.js";
 import { AgendaRepository } from "../repositories/AgendaRepository.js";
+import { UserController } from "../controllers/UserController.js";
+import { AuthController } from "../controllers/AuthController.js";
+import { requireAuth } from "../middleware/RequireAuth.js";
+import { requireSameOrigin } from "../middleware/Session.js";
 
 export const apiRouter = Router();
+
+apiRouter.post("/users", requireSameOrigin, UserController.register);
+apiRouter.get("/users/me", requireAuth, UserController.getCurrentUser);
+apiRouter.post("/auth/login", requireSameOrigin, AuthController.login);
+apiRouter.post("/auth/logout", requireSameOrigin, AuthController.logout);
 
 // Vérifie uniquement que le serveur répond, sans dépendre du métier.
 apiRouter.get("/health", (req, res) => {
@@ -15,7 +24,7 @@ apiRouter.get("/health", (req, res) => {
 apiRouter.get("/test/user-agenda", async (req, res) => {
     const users = new UserRepository(req.app.locals.database);
     const agendas = new AgendaRepository(req.app.locals.database);
-    const user = await users.findById("test-user");
+    const user = await users.findByUsername("sqlite_demo");
     const agenda = await agendas.findById("test-agenda");
     if (!user || !agenda || agenda.ownerId !== user.id) {
         throw createError(404, "Données de démonstration absentes ou incohérentes. Relancez le serveur.");

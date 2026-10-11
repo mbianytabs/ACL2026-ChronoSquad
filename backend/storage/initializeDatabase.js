@@ -25,10 +25,10 @@ async function readLegacy(directory, name) {
     }
 }
 
-// Import unique : user_version=1 n'est enregistré qu'après un import réussi.
+// Import unique : user_version=2 n'est enregistré qu'après un import réussi.
 // Les JSON originaux restent intacts mais ne sont plus utilisés ensuite.
 export async function initializeDatabase(db = getDatabase(), directory = legacyDirectory) {
-    if (db.get("PRAGMA user_version").user_version === 1) return { imported: false };
+    if (db.get("PRAGMA user_version").user_version >= 1) return { imported: false };
 
     const [userRecords, agendaRecords, evenementRecords] = await Promise.all([
         readLegacy(directory, "users.json"),
@@ -45,33 +45,36 @@ export async function initializeDatabase(db = getDatabase(), directory = legacyD
             if (hash.startsWith("$")) throw new Error("Format de hash historique non pris en charge : import annulé.");
             hash = await argon2.hash(hash);
         }
-        users.push(new User(record.id, record.username, hash, record.createdAt));
+        if (!record.id || users.some(u => u.legacyId === record.id)) throw new Error("Identifiant utilisateur historique absent ou en doublon.");
+        users.push({ legacyId: record.id, user: new User(null, record.username, hash, record.createdAt) });
     }
     const agendas = agendaRecords.map(r => new Agenda(r.id, r.name, r.ownerId, r.color, r.createdAt));
     const evenements = evenementRecords.map(r => new Evenement(r.id, r.agendaId, r.title, r.start, r.end, r.description, r.location));
 
     return db.transaction(() => {
         // Revérifier après les await : protège aussi contre deux initialisations simultanées.
-        if (db.get("PRAGMA user_version").user_version === 1) return { imported: false };
+        if (db.get("PRAGMA user_version").user_version >= 1) return { imported: false };
         const count = db.get(`SELECT (SELECT count(*) FROM user) + (SELECT count(*) FROM agenda)
             + (SELECT count(*) FROM rendezvous) AS total`).total;
         if (count !== 0) throw new Error("Import JSON refusé : la base non initialisée contient déjà des données.");
 
-        for (const user of users) {
+        const userIds = new Map();
+        for (const { legacyId, user } of users) {
             const r = user.toRecord();
-            db.run("INSERT INTO user (id, username, password_hash, created_at) VALUES (?, ?, ?, ?)",
-                [r.id, r.username, r.passwordHash, r.createdAt.toISOString()]);
+            const result = db.run("INSERT INTO user (username, password_hash, created_at) VALUES (?, ?, ?)",
+                [r.username, r.passwordHash, r.createdAt.toISOString()]);
+            userIds.set(legacyId, Number(result.lastInsertRowid));
         }
         for (const r of agendas) {
             db.run("INSERT INTO agenda (id, name, color, owner_id, created_at) VALUES (?, ?, ?, ?, ?)",
-                [r.id, r.name, r.color, r.ownerId, r.createdAt.toISOString()]);
+                [r.id, r.name, r.color, userIds.get(r.ownerId) ?? -1, r.createdAt.toISOString()]);
         }
         for (const r of evenements) {
             db.run(`INSERT INTO rendezvous (id, agenda_id, title, start, end, description, location)
                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
                 [r.id, r.agendaId, r.title, r.start.toISOString(), r.end.toISOString(), r.description, r.location]);
         }
-        db.connection.exec("PRAGMA user_version = 1");
+        db.connection.exec("PRAGMA user_version = 2");
         return { imported: true, users: users.length, agendas: agendas.length, rendezvous: evenements.length };
     });
 }

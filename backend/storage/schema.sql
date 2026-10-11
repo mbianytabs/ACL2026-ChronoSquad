@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS user (
-    id TEXT PRIMARY KEY NOT NULL,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE CHECK (length(trim(username)) > 0),
     password_hash TEXT NOT NULL CHECK (length(password_hash) > 0),
     created_at TEXT NOT NULL
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS agenda (
     color TEXT NOT NULL DEFAULT '#3b82f6'
         CHECK (length(color) = 7 AND substr(color, 1, 1) = '#'
             AND substr(color, 2) NOT GLOB '*[^0-9a-fA-F]*'),
-    owner_id TEXT NOT NULL REFERENCES user(id) ON DELETE RESTRICT,
+    owner_id INTEGER NOT NULL REFERENCES user(id) ON DELETE RESTRICT,
     created_at TEXT NOT NULL
 ) STRICT;
 
