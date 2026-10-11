@@ -5,11 +5,15 @@ import { readFile } from "node:fs/promises";
 import express from "express";
 import { app } from "../app.js";
 import { errorHandler } from "../middleware/ErrorHandler.js";
+import { SQLiteDatabase } from "../storage/SQLiteDatabase.js";
+import { seedTestData } from "../storage/initializeDatabase.js";
 
 let server;
 let baseUrl;
 
 before(async () => {
+    app.locals.database = new SQLiteDatabase(":memory:");
+    await seedTestData(app.locals.database);
     server = createServer(app);
     await new Promise((resolve, reject) => {
         server.once("error", reject);
@@ -25,6 +29,26 @@ after(async () => {
             server.close((error) => error ? reject(error) : resolve());
         });
     }
+    app.locals.database.close();
+    delete app.locals.database;
+});
+
+test("la route de test renvoie un utilisateur et son agenda depuis SQLite sans exposer le hash", async () => {
+    // Deux exécutions du SQL ne doivent créer aucun doublon.
+    await seedTestData(app.locals.database);
+    assert.equal(app.locals.database.get("SELECT count(*) AS n FROM user").n, 1);
+    assert.equal(app.locals.database.get("SELECT count(*) AS n FROM agenda").n, 1);
+    const response = await fetch(baseUrl + "/api/test/user-agenda");
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), /application\/json/);
+    const data = await response.json();
+    assert.equal(data.user.id, "test-user");
+    assert.equal(data.user.username, "sqlite_demo");
+    assert.equal(data.agenda.id, "test-agenda");
+    assert.equal(data.agenda.ownerId, data.user.id);
+    assert.equal("passwordHash" in data.user, false);
+    assert.equal("password_hash" in data.user, false);
+    assert.equal(app.locals.database.get("SELECT count(*) AS n FROM rendezvous").n, 0);
 });
 
 test("les trois pages sont rendues par EJS avec leurs inclusions", async () => {
@@ -112,7 +136,8 @@ test("le serveur refuse les corps JSON invalides et trop volumineux", async () =
 
 test("les sources et les données ne sont jamais servies comme fichiers publics", async () => {
     for (const url of ["/backend/server.js", "/data/users.json", "/package.json", "/.git/config",
-        "/views/login.ejs", "/views/partials/head.ejs"]) {
+        "/views/login.ejs", "/views/partials/head.ejs", "/data/chronosquad.sqlite",
+        "/backend/storage/schema.sql"]) {
         const response = await fetch(baseUrl + url);
         assert.equal(response.status, 404, url);
     }

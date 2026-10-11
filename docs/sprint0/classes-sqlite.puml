@@ -1,0 +1,117 @@
+@startuml
+title ChronoSquad - Classes du stockage SQLite
+left to right direction
+skinparam classAttributeIconSize 0
+
+package "Modèles métier existants" {
+    class User {
+        +id : String
+        +username : String
+        -passwordHash : String
+        +createdAt : Date
+        +verifyPassword(plain)
+        +toRecord()
+        +toJSON()
+    }
+    class Agenda {
+        +id : String
+        +name : String
+        +color : String
+        +ownerId : String
+        +createdAt : Date
+        +rename(name)
+        +changeColor(color)
+        +toJSON()
+    }
+    class Evenement {
+        +id : String
+        +agendaId : String
+        +title : String
+        +start : Date
+        +end : Date
+        +location : String
+        +description : String
+        +rename(title)
+        +newSchedule(start, end)
+        +setDescription(text)
+        +setLocation(text)
+        +getDuration()
+        +toJSON()
+    }
+}
+
+package "Accès aux données" {
+    class UserRepository {
+        +db : SQLiteDatabase
+        +UserRepository(db)
+        +findById(id)
+        +findByUsername(username)
+        +create(user)
+    }
+    class AgendaRepository {
+        +db : SQLiteDatabase
+        +AgendaRepository(db)
+        +findById(id)
+        +findByOwner(ownerId)
+        +create(agenda)
+    }
+    class EvenementRepository {
+        +db : SQLiteDatabase
+        +EvenementRepository(db)
+        +findById(id)
+        +findByAgenda(agendaId)
+        +create(evenement)
+        +update(id, evenement)
+        +delete(id)
+    }
+}
+
+package "Stockage" {
+    class SQLiteDatabase {
+        +filePath : String
+        +connection : DatabaseSync
+        +SQLiteDatabase(filePath)
+        +initializeSchema()
+        +get(sql, params)
+        +all(sql, params)
+        +run(sql, params)
+        +transaction(action)
+        +close()
+    }
+    note right of SQLiteDatabase
+        Connexion partagée via getDatabase().
+        Fichier : data/chronosquad.sqlite
+        Tables : user, agenda, rendezvous
+        PRAGMA foreign_keys = ON
+        initializeDatabase() importe les JSON
+        une seule fois avant l'écoute HTTP.
+    end note
+}
+
+User "1" --> "0..*" Agenda : possède
+Agenda "1" --> "0..*" Evenement : contient
+UserRepository --> SQLiteDatabase : SQL sur user
+AgendaRepository --> SQLiteDatabase : SQL sur agenda
+EvenementRepository --> SQLiteDatabase : SQL sur rendezvous
+UserRepository ..> User : reconstruit
+AgendaRepository ..> Agenda : reconstruit
+EvenementRepository ..> Evenement : reconstruit
+
+note bottom of Evenement
+    La classe Evenement existante représente
+    un rendez-vous dans la table rendezvous.
+end note
+note bottom of AgendaRepository
+    agenda.owner_id REFERENCES user(id)
+    SELECT * FROM agenda WHERE owner_id = ?
+end note
+note bottom of EvenementRepository
+    rendezvous.agenda_id REFERENCES agenda(id)
+    SELECT * FROM rendezvous WHERE agenda_id = ?
+end note
+legend bottom
+    Diagramme du stockage implémenté.
+    Contrôleurs et authentification encore à réaliser.
+    Aucun JsonStore dans le stockage actif.
+endlegend
+@enduml
