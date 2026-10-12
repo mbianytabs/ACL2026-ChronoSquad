@@ -55,16 +55,13 @@ const eventDeleteBtn = document.getElementById('event-delete');
 
 const HOUR_HEIGHT = 48; // px, must match --hour-height in style.css
 
-// Stands in for the agenda of a tache that is on the calendar only
-const NO_AGENDA = { id: null, name: 'Sans agenda', color: '#64748b' };
-
 const today = new Date();
 let weekStart = startOfWeek(today);                                   // Monday of the week shown on the right
 let miniMonth = new Date(today.getFullYear(), today.getMonth(), 1);  // month shown in the mini calendar
 
 let agendas = [];
 let evenements = [];
-let selectedAgendaId = null;      // agenda whose taches are shown; null = only the taches without agenda
+let selectedAgendaId = null;      // agenda whose taches are shown; null = empty calendar
 let pickedAgendaIds = new Set();  // agendas ticked in the sheet for the new tache
 let activeCard = null;            // card of the tache whose details are open
 let shownEvent = null;            // tache whose details are open
@@ -170,24 +167,6 @@ function findAgenda(id) {
     return agendas.find((a) => a.id === id);
 }
 
-/**
- * Returns the agenda a tache belongs to, or NO_AGENDA for a tache on the calendar only
- * @param {Object} ev the tache
- * @returns {Object} its agenda ({ name, color })
- */
-function agendaOf(ev) {
-    return findAgenda(ev.agendaId) || NO_AGENDA;
-}
-
-/**
- * Tells whether a tache is on the calendar only, without an agenda
- * @param {Object} ev the tache
- * @returns {boolean} true if it has no agenda
- */
-function hasNoAgenda(ev) {
-    return ev.agendaId === null || ev.agendaId === undefined;
-}
-
 // ---------- Sidebar: agendas act as a filter ----------
 
 /**
@@ -257,10 +236,11 @@ function renderAgendaList() {
 }
 
 /**
- * Shows the taches of one agenda (and those without agenda) in the week view and highlights it in the sidebar
- * @param {string|null} id the id of the agenda to show, or null for the taches without agenda only
+ * Shows only the taches of one agenda in the week view and highlights it in the sidebar
+ * @param {string|null} id the id of the agenda to show, or null for an empty calendar
  */
 function selectAgenda(id) {
+    cancelDraft(); // an unfinished tache belongs to the view it was started in
     selectedAgendaId = id;
     list.querySelectorAll('.agenda-item').forEach((button) => {
         button.setAttribute('aria-pressed', String(button.dataset.id === id));
@@ -271,11 +251,14 @@ function selectAgenda(id) {
 }
 
 /**
- * Shows a hint over the calendar while there is no tache at all
+ * Shows a hint over the empty calendar while no agenda is selected
+ * (create an agenda first if there is none yet)
  */
 function updateCalendarHint() {
-    calendarHint.textContent = 'Cliquez dans le calendrier pour créer une tâche';
-    const gone = evenements.length > 0;
+    calendarHint.textContent = agendas.length
+        ? 'Sélectionnez un agenda pour afficher ses tâches'
+        : 'Créez un agenda pour commencer';
+    const gone = selectedAgendaId !== null;
     calendarHint.classList.toggle('gone', gone);
     calendarHint.setAttribute('aria-hidden', String(gone));
 }
@@ -383,13 +366,13 @@ function renderWeek() {
 // ---------- Taches in the week view ----------
 
 /**
- * Places the taches in the day columns, in their agenda's color: the taches without agenda
- * are always shown, those of an agenda only while it is selected
+ * Places the taches of the selected agenda in the day columns, in its color.
+ * Nothing is shown while no agenda is selected.
  */
 function renderEvents() {
     weekColumns.querySelectorAll('.event:not(.draft)').forEach((el) => el.remove());
 
-    const shown = evenements.filter((e) => hasNoAgenda(e) || e.agendaId === selectedAgendaId);
+    const shown = evenements.filter((e) => selectedAgendaId !== null && e.agendaId === selectedAgendaId);
 
     let index = 0; // staggers the entrance animation
     for (let i = 0; i < 7; i++) {
@@ -450,7 +433,7 @@ function layoutLanes(segments) {
  */
 function createEventBlock(segment, dayStart, index) {
     const { ev } = segment;
-    const agenda = agendaOf(ev);
+    const agenda = findAgenda(ev.agendaId);
     const top = (segment.start - dayStart.getTime()) / 60000;
     const minutes = (segment.end - segment.start) / 60000;
 
@@ -511,7 +494,7 @@ function formatWhen(start, end) {
  * @param {HTMLElement} card the card of the tache in the week view
  */
 function openEvent(ev, card) {
-    const agenda = agendaOf(ev);
+    const agenda = findAgenda(ev.agendaId);
     eventDialog.style.setProperty('--agenda-color', agenda.color);
     eventTitle.textContent = ev.title;
     eventWhen.textContent = formatWhen(new Date(ev.start), new Date(ev.end));
@@ -759,7 +742,8 @@ eventDialog.addEventListener('click', (event) => {
 eventDialog.addEventListener('cancel', clearActiveCard);
 eventDialog.addEventListener('close', clearActiveCard);
 
-// Clicking an empty slot of the week starts a tache right there, on that day and half hour
+// Clicking an empty slot of the week starts a tache on that day and half hour:
+// typed right there in the selected agenda, or in the sheet (to choose its agenda) while none is selected
 weekColumns.addEventListener('click', (event) => {
     if (event.target.closest('.event')) return;
     const column = event.target.closest('.day-column');
@@ -774,14 +758,15 @@ weekColumns.addEventListener('click', (event) => {
     const halfHours = Math.min(47, Math.floor((y / HOUR_HEIGHT) * 2));
     const start = addDays(weekStart, Number(column.dataset.day));
     start.setMinutes(halfHours * 30);
-    openDraft(start);
+    if (selectedAgendaId === null) openCreate({ kind: 'tache', start });
+    else openDraft(start);
 });
 
 // ---------- Tache typed straight in the week view ----------
 
 /**
  * Puts an editable card in the week view: the user types the title on the card and presses Enter.
- * The tache goes to the selected agenda, or on the calendar only if none is selected.
+ * The tache goes to the selected agenda (an agenda must be selected).
  * @param {Date} start day and time where the tache begins (it lasts one hour, until midnight at most)
  */
 function openDraft(start) {
@@ -792,7 +777,7 @@ function openDraft(start) {
     const end = new Date(Math.min(start.getTime() + 60 * 60 * 1000, addDays(dayStart, 1).getTime()));
     const top = (start - dayStart) / 60000;
     const minutes = (end - start) / 60000;
-    const agenda = findAgenda(selectedAgendaId) || NO_AGENDA;
+    const agenda = findAgenda(selectedAgendaId);
 
     const block = document.createElement('form');
     block.className = 'event draft';
@@ -838,7 +823,7 @@ function openDraft(start) {
     });
 
     weekColumns.children[Math.round((dayStart - weekStart) / 86400000)].append(block); // round: a DST day is 23 or 25 h
-    draft = { start, end, block, title };
+    draft = { start, end, block, title, agendaId: agenda.id };
     block.scrollIntoView({ block: 'center', behavior: 'smooth' });
     title.focus({ preventScroll: true });
 }
@@ -854,7 +839,7 @@ function cancelDraft() {
 }
 
 /**
- * Creates the tache typed on the card, in the selected agenda or on the calendar only
+ * Creates the tache typed on the card, in the agenda it was started in
  */
 async function saveDraft() {
     const current = draft;
@@ -866,7 +851,7 @@ async function saveDraft() {
 
     current.title.disabled = true;
     try {
-        const created = await api.createEvenement(selectedAgendaId, {
+        const created = await api.createEvenement(current.agendaId, {
             title: name,
             start: current.start.toISOString(),
             end: current.end.toISOString(),
@@ -914,15 +899,17 @@ function openCreate({ kind, start } = {}) {
     tacheStart.value = toTimeInput(begin);
     tacheEnd.value = isSameDay(begin, end) ? toTimeInput(end) : '23:59';
 
-    // The new tache goes to the shown agenda, or on the calendar only if none is shown
-    pickedAgendaIds = new Set(selectedAgendaId ? [selectedAgendaId] : []);
+    // The new tache goes to the shown agenda, or to the first one
+    const preset = selectedAgendaId || (agendas[0] && agendas[0].id);
+    pickedAgendaIds = new Set(preset ? [preset] : []);
     renderPicker();
     togglePicker(false);
 
     colorCustomRadio.value = colorCustom.value;
     updateAgendaPreview();
 
-    setKind(kind || 'tache');
+    // No agenda yet: a tache needs one, so the sheet starts on the agenda form
+    setKind(agendas.length ? (kind || 'tache') : 'agenda');
     dialog.showModal();
     createBtn.setAttribute('aria-expanded', 'true');
     focusFirstField();
@@ -946,8 +933,8 @@ function openEditTache(ev) {
     tacheLocation.value = ev.location || '';
     tacheDescription.value = ev.description || '';
 
-    // A saved tache belongs to one agenda at most
-    pickedAgendaIds = new Set(hasNoAgenda(ev) ? [] : [ev.agendaId]);
+    // A saved tache belongs to exactly one agenda
+    pickedAgendaIds = new Set([ev.agendaId]);
     renderPicker();
     togglePicker(false);
 
@@ -1058,7 +1045,7 @@ function renderPickerChips() {
     if (picked.length === 0) {
         const placeholder = document.createElement('span');
         placeholder.className = 'picker-placeholder';
-        placeholder.textContent = 'Aucun agenda : calendrier seulement';
+        placeholder.textContent = 'Choisir un ou plusieurs agendas';
         pickerChips.append(placeholder);
     }
     picked.forEach((agenda) => {
@@ -1160,7 +1147,7 @@ async function submitAgenda() {
 
 /**
  * Checks the tache form and creates the tache in every chosen agenda (one copy per agenda),
- * or on the calendar only if no agenda is chosen, or saves the modified tache,
+ * or saves the modified tache,
  * then shows its week so the user sees it
  * @returns {Promise<boolean>} true if the tache was saved, false if a field is invalid
  */
@@ -1183,6 +1170,11 @@ async function submitTache() {
         tacheEnd.focus();
         return false;
     }
+    if (pickedAgendaIds.size === 0) {
+        showDialogError(agendas.length ? 'Choisissez au moins un agenda.' : "Créez d'abord un agenda.");
+        togglePicker(agendas.length > 0);
+        return false;
+    }
 
     const data = {
         title,
@@ -1192,11 +1184,10 @@ async function submitTache() {
         description: tacheDescription.value.trim(),
     };
     if (editing) {
-        const updated = await api.updateEvenement(editing.item.id, { ...data, agendaId: [...pickedAgendaIds][0] ?? null });
+        const updated = await api.updateEvenement(editing.item.id, { ...data, agendaId: [...pickedAgendaIds][0] });
         evenements = evenements.map((e) => (e.id === updated.id ? updated : e));
     } else {
-        const ids = pickedAgendaIds.size ? [...pickedAgendaIds] : [null];
-        const created = await Promise.all(ids.map((id) => api.createEvenement(id, data)));
+        const created = await Promise.all([...pickedAgendaIds].map((id) => api.createEvenement(id, data)));
         evenements.push(...created);
     }
 

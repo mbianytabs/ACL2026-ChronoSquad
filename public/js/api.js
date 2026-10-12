@@ -78,13 +78,11 @@ const api = {
     // Lists the taches (evenements) of every agenda of the logged-in user
     getEvenements: () => request('GET', '/api/evenements'),
 
-    // Creates a tache: { title, start, end, location, description }
-    // in one agenda, or on the calendar only (no agenda) when agendaId is null
-    createEvenement: (agendaId, data) => agendaId === null
-        ? request('POST', '/api/evenements', { ...data, agendaId: null })
-        : request('POST', '/api/agendas/' + encodeURIComponent(agendaId) + '/evenements', data),
+    // Creates a tache in one agenda: { title, start, end, location, description }
+    createEvenement: (agendaId, data) =>
+        request('POST', '/api/agendas/' + encodeURIComponent(agendaId) + '/evenements', data),
 
-    // Updates a tache: { agendaId, title, start, end, location, description } (agendaId null = no agenda)
+    // Updates a tache: { agendaId, title, start, end, location, description }
     updateEvenement: (id, data) => request('PUT', '/api/evenements/' + encodeURIComponent(id), data),
 
     // Deletes a tache
