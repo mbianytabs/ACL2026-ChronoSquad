@@ -831,7 +831,7 @@ body:has(> .home) {
     border-radius: 50%;
 }
 
-/* Empty slots open the sheet on that time */
+/* Double-clicking an empty slot starts a tache on that time */
 .week-columns {
     cursor: cell;
 }
@@ -1598,15 +1598,6 @@ body:has(> .home) {
         0 0 14px color-mix(in srgb, var(--agenda-color) 70%, transparent);
 }
 
-.sheet-note {
-    margin: 0;
-    padding: 14px 16px;
-    font-size: 0.9375rem;
-    color: var(--muted);
-    background: rgba(255, 255, 255, 0.6);
-    border-radius: var(--radius-sm);
-}
-
 .create-sheet .error {
     margin: 0;
 }
@@ -1877,4 +1868,55 @@ body:has(> .home) {
     .agenda-edit {
         opacity: 1;
     }
+}
+
+/* ---------- Tache typed straight in the week view ---------- */
+
+/* Editable card: same glass as a tache, raised above the others */
+.event.draft {
+    z-index: 3;
+    gap: 2px;
+    cursor: default;
+    box-shadow:
+        inset 3px 0 0 var(--agenda-color),
+        inset 0 1px 1px rgba(255, 255, 255, 0.9),
+        0 0 0 2px var(--agenda-color),
+        0 10px 28px color-mix(in srgb, var(--agenda-color) 40%, transparent);
+}
+
+.draft-title {
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    font: inherit;
+    font-weight: 700;
+    color: inherit;
+    background: transparent;
+    border: none;
+    outline: none;
+}
+
+.draft-title::placeholder {
+    color: inherit;
+    opacity: 0.55;
+}
+
+.draft-more {
+    align-self: flex-start;
+    margin-top: auto;
+    padding: 0;
+    font: inherit;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--agenda-color);
+}
+
+.draft-more:focus-visible {
+    outline: 2px solid var(--agenda-color);
+    outline-offset: 2px;
 }

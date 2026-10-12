@@ -108,7 +108,7 @@
         <fieldset id="tache-fields" class="sheet-fields">
             <legend class="visually-hidden">Nouvelle tâche</legend>
 
-            <div id="tache-inputs" class="sheet-fields-inner">
+            <div class="sheet-fields-inner">
                 <input id="tache-title" type="text" class="title-input" placeholder="Ajouter un titre" aria-label="Titre" autocomplete="off">
 
                 <div class="field-row">
@@ -127,7 +127,7 @@
                 </div>
 
                 <div class="field">
-                    <span id="picker-label" class="field-label">Agendas</span>
+                    <span id="picker-label" class="field-label">Agendas <span class="optional">facultatif</span></span>
                     <button id="picker-btn" type="button" class="picker-btn"
                             aria-labelledby="picker-label picker-btn" aria-expanded="false" aria-controls="picker-panel">
                         <span id="picker-chips" class="picker-chips"></span>
@@ -149,11 +149,6 @@
                     <textarea id="tache-description" rows="2" placeholder="Ajouter des détails"></textarea>
                 </div>
             </div>
-
-            <p id="no-agenda-note" class="sheet-note" hidden>
-                Une tâche appartient à un agenda. Créez d'abord votre premier agenda.
-                <button id="go-agenda-btn" type="button" class="link-btn">Créer un agenda</button>
-            </p>
         </fieldset>
 
         <!-- Agenda -->
