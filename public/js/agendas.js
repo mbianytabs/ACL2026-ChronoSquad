@@ -64,7 +64,7 @@ let miniMonth = new Date(today.getFullYear(), today.getMonth(), 1);  // month sh
 
 let agendas = [];
 let evenements = [];
-let selectedAgendaId = null;      // agenda whose taches are shown; null = every tache
+let selectedAgendaId = null;      // agenda whose taches are shown; null = only the taches without agenda
 let pickedAgendaIds = new Set();  // agendas ticked in the sheet for the new tache
 let activeCard = null;            // card of the tache whose details are open
 let shownEvent = null;            // tache whose details are open
@@ -222,8 +222,15 @@ function createAgendaRow(agenda) {
     badge.textContent = count || '';
     badge.setAttribute('aria-label', count + (count > 1 ? ' tâches' : ' tâche'));
 
-    // Clicking the shown agenda again shows every tache
-    button.addEventListener('click', () => selectAgenda(agenda.id === selectedAgendaId ? null : agenda.id));
+    // Clicking the shown agenda again unselects it and puts the calendar back to its default view
+    button.addEventListener('click', () => {
+        if (agenda.id === selectedAgendaId) {
+            selectAgenda(null);
+            showDefaultView();
+        } else {
+            selectAgenda(agenda.id);
+        }
+    });
 
     button.append(dot, name, badge);
 
@@ -250,8 +257,8 @@ function renderAgendaList() {
 }
 
 /**
- * Shows only the taches of one agenda (and those without agenda) in the week view and highlights it in the sidebar
- * @param {string|null} id the id of the agenda to show, or null for every tache
+ * Shows the taches of one agenda (and those without agenda) in the week view and highlights it in the sidebar
+ * @param {string|null} id the id of the agenda to show, or null for the taches without agenda only
  */
 function selectAgenda(id) {
     selectedAgendaId = id;
@@ -267,7 +274,7 @@ function selectAgenda(id) {
  * Shows a hint over the calendar while there is no tache at all
  */
 function updateCalendarHint() {
-    calendarHint.textContent = 'Double-cliquez dans le calendrier pour créer une tâche';
+    calendarHint.textContent = 'Cliquez dans le calendrier pour créer une tâche';
     const gone = evenements.length > 0;
     calendarHint.classList.toggle('gone', gone);
     calendarHint.setAttribute('aria-hidden', String(gone));
@@ -376,15 +383,13 @@ function renderWeek() {
 // ---------- Taches in the week view ----------
 
 /**
- * Places the taches in the day columns, in their agenda's color: every tache while no agenda
- * is selected, otherwise the taches of the selected agenda and those without agenda
+ * Places the taches in the day columns, in their agenda's color: the taches without agenda
+ * are always shown, those of an agenda only while it is selected
  */
 function renderEvents() {
     weekColumns.querySelectorAll('.event:not(.draft)').forEach((el) => el.remove());
 
-    const shown = evenements.filter((e) => hasNoAgenda(e)
-        ? true
-        : findAgenda(e.agendaId) && (selectedAgendaId === null || e.agendaId === selectedAgendaId));
+    const shown = evenements.filter((e) => hasNoAgenda(e) || e.agendaId === selectedAgendaId);
 
     let index = 0; // staggers the entrance animation
     for (let i = 0; i < 7; i++) {
@@ -675,6 +680,14 @@ function showWeekOf(date) {
 }
 
 /**
+ * Puts the calendar back to how the page opens: this week, scrolled a little before the current hour (never before 07:00)
+ */
+function showDefaultView() {
+    showWeekOf(today);
+    weekBody.scrollTo({ top: Math.max(7, new Date().getHours() - 2) * HOUR_HEIGHT, behavior: 'smooth' });
+}
+
+/**
  * Moves the week view by a number of weeks
  * @param {number} delta number of weeks to move (-1 = previous, +1 = next)
  */
@@ -746,13 +759,17 @@ eventDialog.addEventListener('click', (event) => {
 eventDialog.addEventListener('cancel', clearActiveCard);
 eventDialog.addEventListener('close', clearActiveCard);
 
-// Double-clicking an empty slot of the week starts a tache right there, on that day and half hour
-weekColumns.addEventListener('dblclick', (event) => {
+// Clicking an empty slot of the week starts a tache right there, on that day and half hour
+weekColumns.addEventListener('click', (event) => {
     if (event.target.closest('.event')) return;
     const column = event.target.closest('.day-column');
     if (!column) return;
 
-    window.getSelection().removeAllRanges(); // a double-click selects the text under it
+    // A card with a typed title is not thrown away by a click beside it
+    if (draft && draft.title.value.trim()) {
+        draft.title.focus();
+        return;
+    }
     const y = event.clientY - column.getBoundingClientRect().top;
     const halfHours = Math.min(47, Math.floor((y / HOUR_HEIGHT) * 2));
     const start = addDays(weekStart, Number(column.dataset.day));
@@ -1183,8 +1200,8 @@ async function submitTache() {
         evenements.push(...created);
     }
 
-    // Make sure the tache is visible: its week, and every agenda if the shown one does not have it
-    if (pickedAgendaIds.size && !pickedAgendaIds.has(selectedAgendaId)) selectedAgendaId = null;
+    // Make sure the tache is visible: its week, in an agenda it was added to
+    if (pickedAgendaIds.size && !pickedAgendaIds.has(selectedAgendaId)) selectedAgendaId = [...pickedAgendaIds][0];
     renderAgendaList();
     showWeekOf(start);
     weekBody.scrollTo({ top: Math.max(0, start.getHours() - 2) * HOUR_HEIGHT, behavior: 'smooth' });

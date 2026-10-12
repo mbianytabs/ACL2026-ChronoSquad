@@ -831,7 +831,7 @@ body:has(> .home) {
     border-radius: 50%;
 }
 
-/* Double-clicking an empty slot starts a tache on that time */
+/* Clicking an empty slot starts a tache on that time */
 .week-columns {
     cursor: cell;
 }
