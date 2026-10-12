@@ -87,14 +87,14 @@
     </section>
 </main>
 
-<!-- Creation sheet: rises from the bottom center of the screen -->
+<!-- Creation sheet: rises from the bottom center of the screen; also used to modify a tache or an agenda -->
 <dialog id="create-dialog" class="create-sheet" aria-labelledby="create-title">
     <form id="create-form" class="sheet-form" novalidate>
         <span class="sheet-grabber" aria-hidden="true"></span>
 
         <div class="sheet-head">
-            <h2 id="create-title" class="visually-hidden">Créer</h2>
-            <div class="segmented" role="radiogroup" aria-label="Que voulez-vous créer ?">
+            <h2 id="create-title" class="sheet-title visually-hidden">Créer</h2>
+            <div id="kind-switch" class="segmented" role="radiogroup" aria-label="Que voulez-vous créer ?">
                 <input id="kind-tache" type="radio" name="kind" value="tache" checked>
                 <label for="kind-tache">Tâche</label>
                 <input id="kind-agenda" type="radio" name="kind" value="agenda">
@@ -185,6 +185,7 @@
         <p id="dialog-error" class="error" role="alert" hidden></p>
 
         <div class="sheet-footer">
+            <button id="delete-btn" type="button" class="btn btn-danger" hidden>Supprimer</button>
             <button id="cancel-btn" type="button" class="btn btn-glass">Annuler</button>
             <button id="save-btn" type="submit" class="btn btn-primary">Créer la tâche</button>
         </div>
@@ -222,6 +223,13 @@
                 <dd id="event-description" class="event-description"></dd>
             </div>
         </dl>
+
+        <p id="event-error" class="error" role="alert" hidden></p>
+
+        <div class="event-actions">
+            <button id="event-delete" type="button" class="btn btn-danger">Supprimer</button>
+            <button id="event-edit" type="button" class="btn btn-glass">Modifier</button>
+        </div>
     </div>
 </dialog>
 

@@ -1783,3 +1783,98 @@ body:has(> .home) {
         -webkit-backdrop-filter: none;
     }
 }
+
+/* ---------- Modify / delete ---------- */
+
+/* Title of the sheet while modifying (the Tâche | Agenda switch is hidden then) */
+.sheet-title {
+    flex: 1;
+    min-width: 0;
+    font-size: 1.25rem;
+}
+
+.btn.btn-danger {
+    color: var(--danger);
+    background: var(--danger-bg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .btn.btn-danger:hover {
+        background: rgba(220, 53, 69, 0.18);
+    }
+}
+
+/* Second step of a deletion: the button asks for confirmation */
+.btn.btn-danger.confirm {
+    color: #ffffff;
+    background: var(--danger);
+}
+
+.sheet-footer .btn.btn-danger {
+    margin-right: auto;
+}
+
+.event-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+/* Pencil beside each agenda of the sidebar */
+.agenda-list li {
+    display: flex;
+    align-items: center;
+}
+
+.agenda-edit {
+    flex: none;
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    margin-left: 2px;
+    padding: 0;
+    color: var(--muted);
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 150ms ease, background-color 150ms ease;
+}
+
+.agenda-edit svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.agenda-list li:hover .agenda-edit,
+.agenda-list li:focus-within .agenda-edit {
+    opacity: 1;
+}
+
+.agenda-edit:hover {
+    color: var(--text);
+    background: var(--tint);
+}
+
+.agenda-edit:focus-visible {
+    outline: 2px solid var(--sun);
+    outline-offset: 2px;
+}
+
+/* No hover on touch screens: always show the pencil */
+@media (hover: none) {
+    .agenda-edit {
+        opacity: 1;
+    }
+}

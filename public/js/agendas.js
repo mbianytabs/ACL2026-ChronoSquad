@@ -21,6 +21,9 @@ const dialog = document.getElementById('create-dialog');
 const createForm = document.getElementById('create-form');
 const dialogError = document.getElementById('dialog-error');
 const saveBtn = document.getElementById('save-btn');
+const deleteBtn = document.getElementById('delete-btn');
+const sheetTitle = document.getElementById('create-title');
+const kindSwitch = document.getElementById('kind-switch');
 const tacheFields = document.getElementById('tache-fields');
 const agendaFields = document.getElementById('agenda-fields');
 const tacheInputs = document.getElementById('tache-inputs');
@@ -49,6 +52,8 @@ const eventLocationRow = document.getElementById('event-location-row');
 const eventLocation = document.getElementById('event-location');
 const eventAgenda = document.getElementById('event-agenda');
 const eventDescription = document.getElementById('event-description');
+const eventError = document.getElementById('event-error');
+const eventDeleteBtn = document.getElementById('event-delete');
 
 const HOUR_HEIGHT = 48; // px, must match --hour-height in style.css
 
@@ -61,6 +66,8 @@ let evenements = [];
 let selectedAgendaId = null;      // agenda whose taches are shown; null = empty calendar
 let pickedAgendaIds = new Set();  // agendas ticked in the sheet for the new tache
 let activeCard = null;            // card of the tache whose details are open
+let shownEvent = null;            // tache whose details are open
+let editing = null;               // what the sheet modifies: { kind: 'tache'|'agenda', item }, or null when it creates
 
 /**
  * Shows an error message in the sidebar error box
@@ -199,7 +206,16 @@ function createAgendaRow(agenda) {
     button.addEventListener('click', () => selectAgenda(agenda.id === selectedAgendaId ? null : agenda.id));
 
     button.append(dot, name, badge);
-    item.append(button);
+
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'agenda-edit';
+    edit.setAttribute('aria-label', 'Modifier l\'agenda ' + agenda.name);
+    edit.title = 'Modifier';
+    edit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>';
+    edit.addEventListener('click', () => openEditAgenda(agenda));
+
+    item.append(button, edit);
     return item;
 }
 
@@ -479,6 +495,9 @@ function openEvent(ev, card) {
     eventAgenda.textContent = agenda.name;
     eventDescription.textContent = ev.description || 'Aucune description';
     eventDescription.classList.toggle('empty', !ev.description);
+    eventError.hidden = true;
+    disarmDelete(eventDeleteBtn);
+    shownEvent = ev;
 
     clearActiveCard();
     activeCard = card;
@@ -501,6 +520,72 @@ function closeEvent() {
 function clearActiveCard() {
     if (activeCard) activeCard.classList.remove('active');
     activeCard = null;
+}
+
+/**
+ * Tells whether a delete button already asks for confirmation
+ * @param {HTMLButtonElement} button the delete button
+ * @returns {boolean} true if the next click deletes
+ */
+function isArmed(button) {
+    return button.classList.contains('confirm');
+}
+
+/**
+ * First click on a delete button: it asks for confirmation instead of deleting at once
+ * @param {HTMLButtonElement} button the delete button
+ * @param {string} label the question to show on the button
+ */
+function armDelete(button, label) {
+    button.classList.add('confirm');
+    button.textContent = label;
+}
+
+/**
+ * Puts a delete button back to its first step
+ * @param {HTMLButtonElement} button the delete button
+ */
+function disarmDelete(button) {
+    button.classList.remove('confirm');
+    button.textContent = 'Supprimer';
+}
+
+/**
+ * Deletes the tache whose details are open, after a confirmation click
+ */
+async function deleteShownEvent() {
+    if (!isArmed(eventDeleteBtn)) {
+        armDelete(eventDeleteBtn, 'Confirmer la suppression');
+        return;
+    }
+
+    const ev = shownEvent;
+    eventDeleteBtn.disabled = true;
+    try {
+        await api.deleteEvenement(ev.id);
+        removeEvenement(ev.id);
+        closeEvent();
+    } catch (err) {
+        if (err.status === 401) goToLogin();
+        else {
+            // Nothing is removed from the page unless the server confirmed the deletion
+            eventError.textContent = err.message || 'Suppression impossible. Réessayez.';
+            eventError.hidden = false;
+        }
+    } finally {
+        eventDeleteBtn.disabled = false;
+        disarmDelete(eventDeleteBtn);
+    }
+}
+
+/**
+ * Forgets a deleted tache and redraws the sidebar counts and the week view
+ * @param {string} id the id of the deleted tache
+ */
+function removeEvenement(id) {
+    evenements = evenements.filter((e) => e.id !== id);
+    renderAgendaList();
+    renderEvents();
 }
 
 /**
@@ -625,6 +710,12 @@ document.getElementById('mini-next').addEventListener('click', () => {
 });
 
 document.getElementById('event-close').addEventListener('click', closeEvent);
+eventDeleteBtn.addEventListener('click', deleteShownEvent);
+document.getElementById('event-edit').addEventListener('click', () => {
+    const ev = shownEvent;
+    closeEvent();
+    openEditTache(ev);
+});
 
 // A click outside the details closes them
 eventDialog.addEventListener('click', (event) => {
@@ -667,6 +758,7 @@ function nextFullHour() {
  * @param {Date} [options.start] day and time to prefill for the tache; by default the next full hour
  */
 function openCreate({ kind, start } = {}) {
+    editing = null;
     createForm.reset();
     dialogError.hidden = true;
 
@@ -689,6 +781,61 @@ function openCreate({ kind, start } = {}) {
     dialog.showModal();
     createBtn.setAttribute('aria-expanded', 'true');
     focusFirstField();
+}
+
+/**
+ * Opens the sheet to modify a tache, its fields filled with the current values
+ * @param {Object} ev the tache to modify ({ id, agendaId, title, start, end, location, description })
+ */
+function openEditTache(ev) {
+    editing = { kind: 'tache', item: ev };
+    createForm.reset();
+    dialogError.hidden = true;
+
+    const start = new Date(ev.start);
+    const end = new Date(ev.end);
+    tacheTitle.value = ev.title;
+    tacheDate.value = toDateInput(start);
+    tacheStart.value = toTimeInput(start);
+    tacheEnd.value = isSameDay(start, end) ? toTimeInput(end) : '23:59';
+    tacheLocation.value = ev.location || '';
+    tacheDescription.value = ev.description || '';
+
+    // A saved tache belongs to exactly one agenda
+    pickedAgendaIds = new Set([ev.agendaId]);
+    renderPicker();
+    togglePicker(false);
+
+    setKind('tache');
+    dialog.showModal();
+    tacheTitle.focus();
+}
+
+/**
+ * Opens the sheet to modify an agenda (name and color) or delete it
+ * @param {Object} agenda the agenda to modify ({ id, name, color })
+ */
+function openEditAgenda(agenda) {
+    editing = { kind: 'agenda', item: agenda };
+    createForm.reset();
+    dialogError.hidden = true;
+
+    agendaName.value = agenda.name;
+    const swatch = [...createForm.elements.color].find((radio) => radio !== colorCustomRadio && radio.value === agenda.color);
+    if (swatch) {
+        swatch.checked = true;
+    } else {
+        // A color outside the palette goes in the custom swatch
+        colorCustom.value = agenda.color;
+        colorCustomRadio.value = agenda.color;
+        colorCustomRadio.checked = true;
+        colorCustomRadio.closest('.swatch').style.setProperty('--swatch', agenda.color);
+    }
+    updateAgendaPreview();
+
+    setKind('agenda');
+    dialog.showModal();
+    agendaName.focus();
 }
 
 /**
@@ -720,8 +867,20 @@ function setKind(kind) {
     tacheInputs.hidden = !canAddTache;
     noAgendaNote.hidden = canAddTache;
     saveBtn.hidden = isTache && !canAddTache;
-    saveBtn.textContent = isTache ? 'Créer la tâche' : "Créer l'agenda";
     dialogError.hidden = true;
+
+    // Modifying: a title replaces the Tâche | Agenda switch, and the item can be deleted
+    kindSwitch.hidden = editing !== null;
+    sheetTitle.classList.toggle('visually-hidden', editing === null);
+    deleteBtn.hidden = editing === null;
+    disarmDelete(deleteBtn);
+    if (editing) {
+        sheetTitle.textContent = isTache ? 'Modifier la tâche' : "Modifier l'agenda";
+        saveBtn.textContent = 'Enregistrer';
+    } else {
+        sheetTitle.textContent = 'Créer';
+        saveBtn.textContent = isTache ? 'Créer la tâche' : "Créer l'agenda";
+    }
 }
 
 /**
@@ -785,7 +944,11 @@ function renderPickerOptions() {
         checkbox.value = agenda.id;
         checkbox.checked = pickedAgendaIds.has(agenda.id);
         checkbox.addEventListener('change', () => {
-            if (checkbox.checked) pickedAgendaIds.add(agenda.id);
+            if (editing && checkbox.checked) {
+                // A saved tache moves to one agenda: ticking one unticks the others
+                pickedAgendaIds = new Set([agenda.id]);
+                pickerOptions.querySelectorAll('input').forEach((box) => { box.checked = box === checkbox; });
+            } else if (checkbox.checked) pickedAgendaIds.add(agenda.id);
             else pickedAgendaIds.delete(agenda.id);
             renderPickerChips();
             dialogError.hidden = true;
@@ -828,8 +991,8 @@ function updateAgendaPreview() {
 }
 
 /**
- * Checks the agenda form, creates the agenda and adds it to the sidebar
- * @returns {Promise<boolean>} true if the agenda was created, false if a field is invalid
+ * Checks the agenda form, then creates the agenda and adds it to the sidebar, or saves the modified agenda
+ * @returns {Promise<boolean>} true if the agenda was saved, false if a field is invalid
  */
 async function submitAgenda() {
     const name = agendaName.value.trim();
@@ -839,7 +1002,16 @@ async function submitAgenda() {
         return false;
     }
 
-    const agenda = await api.createAgenda(name, createForm.elements.color.value);
+    const color = createForm.elements.color.value;
+    if (editing) {
+        const updated = await api.updateAgenda(editing.item.id, { name, color });
+        agendas = agendas.map((a) => (a.id === updated.id ? updated : a));
+        renderAgendaList();
+        renderEvents(); // the taches take the new color
+        return true;
+    }
+
+    const agenda = await api.createAgenda(name, color);
     agendas.push(agenda);
     renderAgendaList();
     return true;
@@ -847,8 +1019,8 @@ async function submitAgenda() {
 
 /**
  * Checks the tache form and creates the tache in every chosen agenda (one copy per agenda),
- * then shows its week so the user sees it
- * @returns {Promise<boolean>} true if the tache was created, false if a field is invalid
+ * or saves the modified tache, then shows its week so the user sees it
+ * @returns {Promise<boolean>} true if the tache was saved, false if a field is invalid
  */
 async function submitTache() {
     const title = tacheTitle.value.trim();
@@ -882,8 +1054,13 @@ async function submitTache() {
         location: tacheLocation.value.trim(),
         description: tacheDescription.value.trim(),
     };
-    const created = await Promise.all([...pickedAgendaIds].map((id) => api.createEvenement(id, data)));
-    evenements.push(...created);
+    if (editing) {
+        const updated = await api.updateEvenement(editing.item.id, { ...data, agendaId: [...pickedAgendaIds][0] });
+        evenements = evenements.map((e) => (e.id === updated.id ? updated : e));
+    } else {
+        const created = await Promise.all([...pickedAgendaIds].map((id) => api.createEvenement(id, data)));
+        evenements.push(...created);
+    }
 
     // Make sure the new tache is visible: its week, in an agenda it was added to
     if (!pickedAgendaIds.has(selectedAgendaId)) selectedAgendaId = [...pickedAgendaIds][0];
@@ -893,7 +1070,45 @@ async function submitTache() {
     return true;
 }
 
+/**
+ * Deletes the tache or agenda being modified, after a confirmation click.
+ * Deleting an agenda also deletes its taches.
+ */
+async function deleteEditing() {
+    const { kind, item } = editing;
+    if (!isArmed(deleteBtn)) {
+        const count = kind === 'agenda' ? evenements.filter((e) => e.agendaId === item.id).length : 0;
+        armDelete(deleteBtn, count
+            ? 'Supprimer avec ' + count + (count > 1 ? ' tâches ?' : ' tâche ?')
+            : 'Confirmer la suppression');
+        return;
+    }
+
+    deleteBtn.disabled = true;
+    try {
+        if (kind === 'agenda') await api.deleteAgenda(item.id);
+        else await api.deleteEvenement(item.id);
+        if (kind === 'agenda') {
+            agendas = agendas.filter((a) => a.id !== item.id);
+            evenements = evenements.filter((e) => e.agendaId !== item.id);
+            if (selectedAgendaId === item.id) selectedAgendaId = null;
+        } else {
+            evenements = evenements.filter((e) => e.id !== item.id);
+        }
+        renderAgendaList();
+        renderEvents();
+        closeCreate();
+    } catch (err) {
+        if (err.status === 401) goToLogin();
+        else showDialogError(err.message || 'Suppression impossible. Réessayez.');
+        disarmDelete(deleteBtn);
+    } finally {
+        deleteBtn.disabled = false;
+    }
+}
+
 createBtn.addEventListener('click', () => openCreate());
+deleteBtn.addEventListener('click', deleteEditing);
 document.getElementById('close-dialog').addEventListener('click', closeCreate);
 document.getElementById('cancel-btn').addEventListener('click', closeCreate);
 document.getElementById('go-agenda-btn').addEventListener('click', () => {
@@ -921,7 +1136,10 @@ colorCustom.addEventListener('input', () => {
     updateAgendaPreview();
 });
 
-createForm.addEventListener('input', () => { dialogError.hidden = true; });
+createForm.addEventListener('input', () => {
+    dialogError.hidden = true;
+    if (editing) disarmDelete(deleteBtn);
+});
 
 // Escape closes the agenda list first, then the sheet
 dialog.addEventListener('cancel', (event) => {
@@ -951,7 +1169,8 @@ createForm.addEventListener('submit', async (event) => {
     } catch (err) {
         if (err.status === 401) goToLogin();
         else if (err.status === 400) showDialogError(err.message || 'Vérifiez les champs puis réessayez.');
-        else showDialogError('Création impossible. Réessayez.');
+        else if (err.status === 404) showDialogError(err.message || "Cet élément n'existe plus. Rechargez la page.");
+        else showDialogError(editing ? 'Enregistrement impossible. Réessayez.' : 'Création impossible. Réessayez.');
     } finally {
         saveBtn.disabled = false;
     }

@@ -69,10 +69,22 @@ const api = {
     // Creates an agenda for the logged-in user
     createAgenda: (name, color) => request('POST', '/api/agendas', { name, color }),
 
+    // Renames or recolors an agenda: { name, color }
+    updateAgenda: (id, data) => request('PUT', '/api/agendas/' + encodeURIComponent(id), data),
+
+    // Deletes an agenda and all its taches
+    deleteAgenda: (id) => request('DELETE', '/api/agendas/' + encodeURIComponent(id)),
+
     // Lists the taches (evenements) of every agenda of the logged-in user
     getEvenements: () => request('GET', '/api/evenements'),
 
     // Creates a tache in one agenda: { title, start, end, location, description }
     createEvenement: (agendaId, data) =>
         request('POST', '/api/agendas/' + encodeURIComponent(agendaId) + '/evenements', data),
+
+    // Updates a tache: { agendaId, title, start, end, location, description }
+    updateEvenement: (id, data) => request('PUT', '/api/evenements/' + encodeURIComponent(id), data),
+
+    // Deletes a tache
+    deleteEvenement: (id) => request('DELETE', '/api/evenements/' + encodeURIComponent(id)),
 };
