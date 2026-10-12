@@ -37,7 +37,7 @@ form.addEventListener("submit", async (event) => {
         if (err.status === 409) {
             showError("Ce nom d'utilisateur est déjà pris.");
         } else if (err.status === 400) {
-            showError("Un champ est vide ou invalide.");
+            showError(err.message || "Un champ est vide ou invalide.");
         } else {
             showError("Impossible de créer le compte. Réessayez dans un instant.");
         }

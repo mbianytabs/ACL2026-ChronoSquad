@@ -25,7 +25,7 @@ async function readLegacy(directory, name) {
     }
 }
 
-// Import unique : user_version=2 n'est enregistré qu'après un import réussi.
+// Import unique : user_version=3 n'est enregistré qu'après un import réussi.
 // Les JSON originaux restent intacts mais ne sont plus utilisés ensuite.
 export async function initializeDatabase(db = getDatabase(), directory = legacyDirectory) {
     if (db.get("PRAGMA user_version").user_version >= 1) return { imported: false };
@@ -55,7 +55,7 @@ export async function initializeDatabase(db = getDatabase(), directory = legacyD
         // Revérifier après les await : protège aussi contre deux initialisations simultanées.
         if (db.get("PRAGMA user_version").user_version >= 1) return { imported: false };
         const count = db.get(`SELECT (SELECT count(*) FROM user) + (SELECT count(*) FROM agenda)
-            + (SELECT count(*) FROM rendezvous) AS total`).total;
+            + (SELECT count(*) FROM evenement) AS total`).total;
         if (count !== 0) throw new Error("Import JSON refusé : la base non initialisée contient déjà des données.");
 
         const userIds = new Map();
@@ -70,11 +70,11 @@ export async function initializeDatabase(db = getDatabase(), directory = legacyD
                 [r.id, r.name, r.color, userIds.get(r.ownerId) ?? -1, r.createdAt.toISOString()]);
         }
         for (const r of evenements) {
-            db.run(`INSERT INTO rendezvous (id, agenda_id, title, start, end, description, location)
+            db.run(`INSERT INTO evenement (id, agenda_id, title, start, end, description, location)
                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
                 [r.id, r.agendaId, r.title, r.start.toISOString(), r.end.toISOString(), r.description, r.location]);
         }
-        db.connection.exec("PRAGMA user_version = 2");
-        return { imported: true, users: users.length, agendas: agendas.length, rendezvous: evenements.length };
+        db.connection.exec("PRAGMA user_version = 3");
+        return { imported: true, users: users.length, agendas: agendas.length, evenements: evenements.length };
     });
 }

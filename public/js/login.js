@@ -38,6 +38,7 @@ form.addEventListener('submit', async (event) => {
         window.location.href = '/agendas';
     } catch (err) {
         if (err.status === 401) showError('Identifiants invalides.');
+        else if (err.status === 400) showError(err.message);
         else if (err.status === 0) showError('Serveur injoignable. Réessayez.');
         else showError('Connexion impossible. Réessayez.');
     } finally {

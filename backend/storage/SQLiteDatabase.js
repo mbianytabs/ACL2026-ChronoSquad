@@ -12,11 +12,13 @@ export class SQLiteDatabase {
         this.connection = new DatabaseSync(this.filePath);
         try {
             this.connection.exec("PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
-            if (this.get("PRAGMA user_version").user_version > 2) {
+            if (this.get("PRAGMA user_version").user_version > 3) {
                 throw new Error("Version SQLite plus récente que celle supportée par ce serveur.");
             }
             this.migrateUserIds();
+            this.migrateEventTable();
             this.initializeSchema();
+            if (this.get("PRAGMA user_version").user_version >= 1) this.connection.exec("PRAGMA user_version = 3");
         } catch (error) {
             this.close();
             throw error;
@@ -40,6 +42,26 @@ export class SQLiteDatabase {
         } finally {
             this.connection.exec("PRAGMA foreign_keys = ON");
         }
+    }
+
+    migrateEventTable() {
+        // Reconnaître l'ancienne table par sa relation avec agenda, sans garder
+        // son ancien nom dans le code. Renommer conserve toutes ses lignes.
+        const tables = this.all(`SELECT name FROM sqlite_schema
+            WHERE type = 'table' AND name <> 'evenement' AND sql LIKE '%agenda_id%'`);
+        if (!tables.length) return;
+        if (tables.length !== 1 || this.get("SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'evenement'")) {
+            throw new Error("Plusieurs tables d'événements détectées : migration annulée pour préserver les données.");
+        }
+        const quote = name => '"' + name.replaceAll('"', '""') + '"';
+        this.transaction(() => {
+            this.connection.exec(`ALTER TABLE ${quote(tables[0].name)} RENAME TO evenement`);
+            // schema.sql recrée l'index avec le nom correspondant à evenement.
+            for (const index of this.all("SELECT name FROM pragma_index_list('evenement') WHERE origin = 'c'")) {
+                this.connection.exec(`DROP INDEX ${quote(index.name)}`);
+            }
+            if (this.get("PRAGMA user_version").user_version > 0) this.connection.exec("PRAGMA user_version = 3");
+        });
     }
 
     initializeSchema() {

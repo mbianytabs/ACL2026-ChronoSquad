@@ -30,7 +30,7 @@ try {
     app.locals.database = db;
     console.log(`SQLite : ${db.filePath}`);
     if (migration.imported) {
-        console.log(`Import JSON : ${migration.users} utilisateurs, ${migration.agendas} agendas, ${migration.rendezvous} rendez-vous.`);
+        console.log(`Import JSON : ${migration.users} utilisateurs, ${migration.agendas} agendas, ${migration.evenements} événement.`);
     }
     server.listen(PORT, "0.0.0.0", () => {
         console.log(`ChronoSquad : http://localhost:${PORT}`);

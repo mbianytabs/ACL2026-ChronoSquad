@@ -17,7 +17,7 @@ export class Agenda{
      */
     constructor(id, name,ownerId, color = "#3b82f6",createdAt = new Date()){
        
-        if (!id || !ownerId) {
+        if ((id !== null && !id) || !ownerId) {
             throw new Error("id et ownerId sont obligatoires");
         }
         Agenda.#validateName(name);

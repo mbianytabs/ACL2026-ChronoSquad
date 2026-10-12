@@ -17,8 +17,12 @@ export class AgendaRepository {
     }
 
     async create(agenda) {
-        this.db.run("INSERT INTO agenda (id, name, color, owner_id, created_at) VALUES (?, ?, ?, ?, ?)",
-            [agenda.id, agenda.name, agenda.color, agenda.ownerId, agenda.createdAt.toISOString()]);
-        return agenda;
+        return this.db.transaction(() => {
+            // IDs simples ; les anciens IDs textuels restent compatibles avec le front.
+            const id = agenda.id ?? String(this.db.get("SELECT COALESCE(MAX(CAST(id AS INTEGER)), 0) + 1 AS id FROM agenda").id);
+            this.db.run("INSERT INTO agenda (id, name, color, owner_id, created_at) VALUES (?, ?, ?, ?, ?)",
+                [id, agenda.name, agenda.color, agenda.ownerId, agenda.createdAt.toISOString()]);
+            return toAgenda(this.db.get("SELECT * FROM agenda WHERE id = ?", [id]));
+        });
     }
 }

@@ -48,7 +48,7 @@ test("la route de test renvoie un utilisateur et son agenda depuis SQLite sans e
     assert.equal(data.agenda.ownerId, data.user.id);
     assert.equal("passwordHash" in data.user, false);
     assert.equal("password_hash" in data.user, false);
-    assert.equal(app.locals.database.get("SELECT count(*) AS n FROM rendezvous").n, 0);
+    assert.equal(app.locals.database.get("SELECT count(*) AS n FROM evenement").n, 0);
 });
 
 test("les trois pages sont rendues par EJS avec leurs inclusions", async () => {

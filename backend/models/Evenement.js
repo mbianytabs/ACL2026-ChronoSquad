@@ -22,7 +22,7 @@ export class Evenement{
      * @param location
      */
     constructor(id, agendaId,title, start, end, description="" , location=""){
-        if (!id || !agendaId) {
+        if ((id !== null && !id) || !agendaId) {
             throw new Error("id et agendaId sont obligatoires");
         }
 

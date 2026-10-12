@@ -20,7 +20,7 @@
     {
         "id": "rdv3",
         "agendaId": "agenda2",
-        "title": "Rendez-vous client",
+        "title": "Événement client",
         "start": "2026-10-14T09:00:00.000Z",
         "end": "2026-10-14T10:00:00.000Z",
         "location": "Bureau",

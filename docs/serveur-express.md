@@ -136,7 +136,7 @@ Les tests ouvrent des ports temporaires et ne modifient pas les JSON du projet. 
 
 Le socle respecte l'organisation du serveur du CM06 et les contraintes techniques du sujet : serveur unique, port 3000, installation et lancement npm, pages et API distinguées, accès réseau local. EJS est installé, configuré et exercé par les erreurs du serveur.
 
-Les exigences fonctionnelles du sujet, notamment identification, agendas, rendez-vous et persistance, restent à relier à cette base lors du développement métier. Aucune authentification factice, session, modification de modèle ou opération de données n'a été ajoutée ici. Les pages existantes restent celles du prototype, sans protection métier à ce stade.
+Les exigences fonctionnelles du sujet, notamment identification, agendas, événement et persistance, restent à relier à cette base lors du développement métier. Aucune authentification factice, session, modification de modèle ou opération de données n'a été ajoutée ici. Les pages existantes restent celles du prototype, sans protection métier à ce stade.
 
 Références : CM06, pages 19 à 26 pour les middlewares et parsers, pages 30 et 31 pour `server.js` et `app.js`, pages 40 à 44 pour le moteur EJS ; sujet du projet, page 1. Documentation officielle : [Express 5](https://expressjs.com/en/5x/api/) et [moteurs de modèles](https://expressjs.com/en/guide/using-template-engines/).
 

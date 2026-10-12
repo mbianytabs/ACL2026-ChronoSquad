@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS agenda (
     created_at TEXT NOT NULL
 ) STRICT;
 
-CREATE TABLE IF NOT EXISTS rendezvous (
+CREATE TABLE IF NOT EXISTS evenement (
     id TEXT PRIMARY KEY NOT NULL,
     agenda_id TEXT NOT NULL REFERENCES agenda(id) ON DELETE RESTRICT,
     title TEXT NOT NULL CHECK (length(trim(title)) > 0),
@@ -26,4 +26,4 @@ CREATE TABLE IF NOT EXISTS rendezvous (
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS agenda_owner_idx ON agenda(owner_id);
-CREATE INDEX IF NOT EXISTS rendezvous_agenda_start_idx ON rendezvous(agenda_id, start);
+CREATE INDEX IF NOT EXISTS evenement_agenda_start_idx ON evenement(agenda_id, start);

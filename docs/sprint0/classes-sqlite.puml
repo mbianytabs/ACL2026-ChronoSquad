@@ -60,6 +60,7 @@ package "Accès aux données" {
         +EvenementRepository(db)
         +findById(id)
         +findByAgenda(agendaId)
+        +findByOwner(ownerId)
         +create(evenement)
         +update(id, evenement)
         +delete(id)
@@ -73,6 +74,7 @@ package "Stockage" {
         +SQLiteDatabase(filePath)
         +initializeSchema()
         +migrateUserIds()
+        +migrateEventTable()
         +get(sql, params)
         +all(sql, params)
         +run(sql, params)
@@ -82,7 +84,7 @@ package "Stockage" {
     note right of SQLiteDatabase
         Connexion partagée via getDatabase().
         Fichier : data/chronosquad.sqlite
-        Tables : user, agenda, rendezvous
+        Tables : user, agenda, evenement
         PRAGMA foreign_keys = ON
         initializeDatabase() importe les JSON
         une seule fois avant l'écoute HTTP.
@@ -107,30 +109,44 @@ package "Authentification" {
 }
 UserController --> UserRepository
 AuthController --> UserRepository
+package "Agendas et événements" {
+    class AgendaController {
+        {static} +getAgendas(req, res)
+        {static} +getAgenda(req, res)
+        {static} +createAgenda(req, res)
+    }
+    class EvenementController {
+        {static} +getEvenements(req, res)
+        {static} +createEvenement(req, res)
+    }
+}
+AgendaController --> AgendaRepository
+EvenementController --> AgendaRepository
+EvenementController --> EvenementRepository
 User "1" --> "0..*" Agenda : possède
 Agenda "1" --> "0..*" Evenement : contient
 UserRepository --> SQLiteDatabase : SQL sur user
 AgendaRepository --> SQLiteDatabase : SQL sur agenda
-EvenementRepository --> SQLiteDatabase : SQL sur rendezvous
+EvenementRepository --> SQLiteDatabase : SQL sur evenement
 UserRepository ..> User : reconstruit
 AgendaRepository ..> Agenda : reconstruit
 EvenementRepository ..> Evenement : reconstruit
 
 note bottom of Evenement
     La classe Evenement existante représente
-    un rendez-vous dans la table rendezvous.
+    un événement dans la table evenement.
 end note
 note bottom of AgendaRepository
     agenda.owner_id REFERENCES user(id)
     SELECT * FROM agenda WHERE owner_id = ?
 end note
 note bottom of EvenementRepository
-    rendezvous.agenda_id REFERENCES agenda(id)
-    SELECT * FROM rendezvous WHERE agenda_id = ?
+    evenement.agenda_id REFERENCES agenda(id)
+    SELECT * FROM evenement WHERE agenda_id = ?
 end note
 legend bottom
     Stockage et authentification implémentés.
-    Contrôleurs d'agendas et de rendez-vous encore à réaliser.
+    Consultation et création d'agendas et de événements raccordées au front.
     Aucun JsonStore dans le stockage actif.
 endlegend
 @enduml

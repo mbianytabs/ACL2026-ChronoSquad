@@ -606,8 +606,9 @@ async function init() {
 logoutBtn.addEventListener('click', async () => {
     try {
         await api.logout();
-    } finally {
         goToLogin();
+    } catch (err) {
+        showError('Déconnexion impossible. Réessayez.');
     }
 });
 
@@ -949,7 +950,7 @@ createForm.addEventListener('submit', async (event) => {
         if (done) closeCreate();
     } catch (err) {
         if (err.status === 401) goToLogin();
-        else if (err.status === 400) showDialogError('Vérifiez les champs puis réessayez.');
+        else if (err.status === 400) showDialogError(err.message || 'Vérifiez les champs puis réessayez.');
         else showDialogError('Création impossible. Réessayez.');
     } finally {
         saveBtn.disabled = false;

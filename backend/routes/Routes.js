@@ -4,6 +4,8 @@ import { UserRepository } from "../repositories/UserRepository.js";
 import { AgendaRepository } from "../repositories/AgendaRepository.js";
 import { UserController } from "../controllers/UserController.js";
 import { AuthController } from "../controllers/AuthController.js";
+import { AgendaController } from "../controllers/AgendaController.js";
+import { EvenementController } from "../controllers/EvenementController.js";
 import { requireAuth } from "../middleware/RequireAuth.js";
 import { requireSameOrigin } from "../middleware/Session.js";
 
@@ -13,6 +15,12 @@ apiRouter.post("/users", requireSameOrigin, UserController.register);
 apiRouter.get("/users/me", requireAuth, UserController.getCurrentUser);
 apiRouter.post("/auth/login", requireSameOrigin, AuthController.login);
 apiRouter.post("/auth/logout", requireSameOrigin, AuthController.logout);
+
+apiRouter.get("/agendas", requireAuth, AgendaController.getAgendas);
+apiRouter.get("/agendas/:id", requireAuth, AgendaController.getAgenda);
+apiRouter.post("/agendas", requireSameOrigin, requireAuth, AgendaController.createAgenda);
+apiRouter.get("/evenements", requireAuth, EvenementController.getEvenements);
+apiRouter.post("/agendas/:agendaId/evenements", requireSameOrigin, requireAuth, EvenementController.createEvenement);
 
 // Vérifie uniquement que le serveur répond, sans dépendre du métier.
 apiRouter.get("/health", (req, res) => {

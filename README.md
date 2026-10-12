@@ -42,7 +42,7 @@ Node.js · Express · EJS · Argon2 · SQLite (node:sqlite) · HTML/CSS/JavaScri
 ## SQLite storage
 
 The server automatically creates `data/chronosquad.sqlite`, with the tables
-`user`, `agenda` and `rendezvous`, before listening on port 3000.
+`user`, `agenda` and `evenement`, before listening on port 3000.
 No separate database server or XAMPP installation is required.
 
 On the first startup, existing `users.json`, `agendas.json` and `evenements.json`
@@ -53,13 +53,14 @@ An invalid import stops startup without saving partial data; fix the JSON and re
 
 The database is local and excluded from Git. Keep it across restarts.
 To back it up, stop the server and copy `data/chronosquad.sqlite`.
-Repositories reconstruct the existing domain models; `Evenement` uses the SQL table `rendezvous`.
+Repositories reconstruct the existing domain models; `Evenement` uses the SQL table `evenement`.
 
 Run `npm test` for HTTP and SQLite checks, or `npm run test:storage` for storage only.
 Tests use isolated databases and do not modify the application database.
 
-The storage layer and account authentication are ready. Agenda and appointment
-API controllers are still to be implemented.
+All API calls currently used by the front-end are connected: registration,
+login, logout, user identification, agenda listing/details/creation and appointment
+listing/creation. Agenda and appointment data is restricted to its owner.
 See [sprint 0 conception](docs/sprint0/conception.md) for details and the class diagram.
 
 ### SQLite test URL
@@ -91,6 +92,29 @@ appropriate session store and HTTPS (`NODE_ENV=production` enables secure cookie
 Run `npm run test:auth` for authentication tests.
 See [authentication guide](docs/sprint0/authentification.md) for request bodies,
 responses, validation rules and a PowerShell example.
+
+### Using the connected front-end
+
+Open `http://localhost:3000/register`, create an account, then log in on `/`.
+On `/agendas`, use **Créer** to add an agenda, then a task in one or more of your
+agendas. Select an agenda in the sidebar to display its tasks. Refreshing the page
+reloads saved data from SQLite. **Se déconnecter** closes the session.
+
+| Method | Route | Response |
+|--------|-------|----------|
+| GET | `/api/agendas` | Array of the logged-in user's agendas |
+| GET | `/api/agendas/:id` | One of the user's agendas, or 404 |
+| POST | `/api/agendas` | 201 agenda; body `{ name, color? }` |
+| GET | `/api/evenements` | Array of appointments across the user's agendas |
+| POST | `/api/agendas/:agendaId/evenements` | 201 appointment; body `{ title, start, end, location?, description? }` |
+
+All five routes require a session (otherwise 401). Invalid creation fields return
+400. An absent agenda or one belonging to another user returns 404. Owners and IDs
+are assigned server-side. New agenda and appointment IDs are simple numeric strings,
+preserving the string IDs expected by the current front-end and legacy data.
+
+The existing front-end does not offer appointment editing/deletion controls;
+those are not added by this connection work. No CSS or layout changes were made.
 
 ## Team
 

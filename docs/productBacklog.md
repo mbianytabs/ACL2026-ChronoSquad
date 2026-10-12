@@ -24,15 +24,15 @@ Ce document évolue tout au long du projet : il est mis à jour à chaque planif
 | US09 | En tant qu'utilisateur, je veux afficher plusieurs agendas simultanément | Haute | 5 | S1 | À faire |
 | US15 | En tant qu'utilisateur, je veux renommer ou supprimer un agenda | Basse | 2 | S1 | À faire |
 
-## Épic 3: Rendez-vous
+## Épic 3: Événements
 
 | ID | User story | Priorité | Points | Sprint | Statut |
 |----|-----------|----------|--------|--------|--------|
-| US06 | En tant qu'utilisateur, je veux ajouter un rendez-vous dans un agenda (titre, date, heures, lieu, description) | Haute | 5 | S1 | À faire |
-| US07 | En tant qu'utilisateur, je veux modifier un rendez-vous | Haute | 3 | S1 | À faire |
-| US08 | En tant qu'utilisateur, je veux supprimer un rendez-vous | Haute | 2 | S1 | À faire |
-| US10 | En tant qu'utilisateur, je veux créer des rendez-vous récurrents (quotidien, hebdomadaire, mensuel) | Moyenne | 8 | S2 | À faire |
-| US11 | En tant qu'utilisateur, je veux rechercher un rendez-vous par critères (titre, date, lieu, agenda) | Moyenne | 5 | S2 | À faire |
+| US06 | En tant qu'utilisateur, je veux ajouter un événement dans un agenda (titre, date, heures, lieu, description) | Haute | 5 | S1 | À faire |
+| US07 | En tant qu'utilisateur, je veux modifier un événement | Haute | 3 | S1 | À faire |
+| US08 | En tant qu'utilisateur, je veux supprimer un événement | Haute | 2 | S1 | À faire |
+| US10 | En tant qu'utilisateur, je veux créer des événements récurrents (quotidien, hebdomadaire, mensuel) | Moyenne | 8 | S2 | À faire |
+| US11 | En tant qu'utilisateur, je veux rechercher un événement par critères (titre, date, lieu, agenda) | Moyenne | 5 | S2 | À faire |
 
 ## Épic 4: Partage et échange
 
@@ -47,8 +47,8 @@ Ce document évolue tout au long du projet : il est mis à jour à chaque planif
 | ID | User story | Priorité | Points | Sprint | Statut |
 |----|-----------|----------|--------|--------|--------|
 | US16 | En tant qu'utilisateur, je veux basculer entre une vue jour / semaine / mois | Basse | 5 | S3 | À faire |
-| US17 | En tant qu'utilisateur, je veux être averti quand deux rendez-vous se chevauchent | Basse | 3 | S3 | À faire |
-| US18 | En tant qu'utilisateur, je veux déplacer un rendez-vous par glisser-déposer | Basse | 5 | — | À faire |
+| US17 | En tant qu'utilisateur, je veux être averti quand deux événements se chevauchent | Basse | 3 | S3 | À faire |
+| US18 | En tant qu'utilisateur, je veux déplacer un événement par glisser-déposer | Basse | 5 | — | À faire |
 | US19 | En tant qu'utilisateur, je veux un mode sombre | Basse | 2 | — | À faire |
 
 ## Répartition prévue par sprint

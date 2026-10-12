@@ -61,7 +61,7 @@ Le README annonce Express, express-session et bcryptjs, ainsi qu’une arboresce
 
 Les données JSON contiennent déjà des exemples ; ce ne sont pas des tableaux vides à réinitialiser systématiquement. Dans users.json, les valeurs actuelles de passwordHash sont des mots de passe de démonstration en clair, pas des hashes Argon2. Ces comptes ne peuvent donc pas être vérifiés tels quels par User.verifyPassword. Créez un nouveau compte de test par la future API pour valider l’authentification. Pour conserver les comptes de démonstration et leurs agendas liés, prévoir une migration ponctuelle de ces valeurs vers Argon2 en conservant les identifiants ; ne pas tenter de les rehacher automatiquement à chaque démarrage.
 
-L’interface sélectionne actuellement un seul agenda pour la vue semaine, via selectedAgendaId. La sélection de plusieurs agendas dans la création d’une tâche produit plusieurs créations ; elle ne prouve pas un affichage simultané de plusieurs agendas. La modification et la suppression des rendez-vous ne figurent pas dans realApi. Ces écarts au sujet ne seront pas réglés par EJS.
+L’interface sélectionne actuellement un seul agenda pour la vue semaine, via selectedAgendaId. La sélection de plusieurs agendas dans la création d’une tâche produit plusieurs créations ; elle ne prouve pas un affichage simultané de plusieurs agendas. La modification et la suppression des événements ne figurent pas dans realApi. Ces écarts au sujet ne seront pas réglés par EJS.
 
 ## 3 Comprendre Node.js Express et EJS
 
@@ -967,7 +967,7 @@ Pour travailler à plusieurs, fixer d’abord les URL, le format JSON et les nom
 
 ### Les fonctionnalités du sujet à ne pas oublier
 
-La migration décrite fournit la base du serveur et les opérations actuelles du client. Elle ne termine pas l’application du sujet. Il reste notamment à ajouter modification et suppression des rendez-vous : choisir des routes telles que PUT /api/evenements/:id et DELETE /api/evenements/:id, vérifier le propriétaire de l’agenda, valider les champs, compléter le repository et ajouter les actions client.
+La migration décrite fournit la base du serveur et les opérations actuelles du client. Elle ne termine pas l’application du sujet. Il reste notamment à ajouter modification et suppression des événements : choisir des routes telles que PUT /api/evenements/:id et DELETE /api/evenements/:id, vérifier le propriétaire de l’agenda, valider les champs, compléter le repository et ajouter les actions client.
 
 L’affichage simultané de plusieurs agendas nécessite de remplacer la sélection unique de la semaine par un ensemble d’identifiants sélectionnés, puis de filtrer les événements sur cet ensemble. Les fonctionnalités de récurrence, recherche, partage et import/export viennent après le client minimal. Elles utilisent les mêmes couches Express, contrôleurs et repositories.
 
