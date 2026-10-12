@@ -19,8 +19,11 @@ apiRouter.post("/auth/logout", requireSameOrigin, AuthController.logout);
 apiRouter.get("/agendas", requireAuth, AgendaController.getAgendas);
 apiRouter.get("/agendas/:id", requireAuth, AgendaController.getAgenda);
 apiRouter.post("/agendas", requireSameOrigin, requireAuth, AgendaController.createAgenda);
+apiRouter.put("/agendas/:id", requireSameOrigin, requireAuth, AgendaController.updateAgenda);
 apiRouter.get("/evenements", requireAuth, EvenementController.getEvenements);
 apiRouter.post("/agendas/:agendaId/evenements", requireSameOrigin, requireAuth, EvenementController.createEvenement);
+apiRouter.put("/evenements/:id", requireSameOrigin, requireAuth, EvenementController.updateEvenement);
+apiRouter.delete("/evenements/:id", requireSameOrigin, requireAuth, EvenementController.deleteEvenement);
 
 // Vérifie uniquement que le serveur répond, sans dépendre du métier.
 apiRouter.get("/health", (req, res) => {

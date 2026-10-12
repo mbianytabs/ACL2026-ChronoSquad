@@ -16,6 +16,12 @@ export class AgendaRepository {
         return this.db.all("SELECT * FROM agenda WHERE owner_id = ? ORDER BY created_at, id", [ownerId]).map(toAgenda);
     }
 
+    async update(agenda) {
+        const result = this.db.run("UPDATE agenda SET name = ?, color = ? WHERE id = ?",
+            [agenda.name, agenda.color, agenda.id]);
+        return result.changes ? this.findById(agenda.id) : null;
+    }
+
     async create(agenda) {
         return this.db.transaction(() => {
             // IDs simples ; les anciens IDs textuels restent compatibles avec le front.
