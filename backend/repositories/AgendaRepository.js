@@ -16,6 +16,14 @@ export class AgendaRepository {
         return this.db.all("SELECT * FROM agenda WHERE owner_id = ? ORDER BY created_at, id", [ownerId]).map(toAgenda);
     }
 
+    async delete(id) {
+        return this.db.transaction(() => {
+            // Supprimer les événements avant leur agenda pour respecter les clés étrangères.
+            this.db.run("DELETE FROM evenement WHERE agenda_id = ?", [id]);
+            return this.db.run("DELETE FROM agenda WHERE id = ?", [id]).changes > 0;
+        });
+    }
+
     async update(agenda) {
         const result = this.db.run("UPDATE agenda SET name = ?, color = ? WHERE id = ?",
             [agenda.name, agenda.color, agenda.id]);

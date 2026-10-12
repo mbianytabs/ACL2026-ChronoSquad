@@ -20,6 +20,7 @@ apiRouter.get("/agendas", requireAuth, AgendaController.getAgendas);
 apiRouter.get("/agendas/:id", requireAuth, AgendaController.getAgenda);
 apiRouter.post("/agendas", requireSameOrigin, requireAuth, AgendaController.createAgenda);
 apiRouter.put("/agendas/:id", requireSameOrigin, requireAuth, AgendaController.updateAgenda);
+apiRouter.delete("/agendas/:id", requireSameOrigin, requireAuth, AgendaController.deleteAgenda);
 apiRouter.get("/evenements", requireAuth, EvenementController.getEvenements);
 apiRouter.post("/agendas/:agendaId/evenements", requireSameOrigin, requireAuth, EvenementController.createEvenement);
 apiRouter.put("/evenements/:id", requireSameOrigin, requireAuth, EvenementController.updateEvenement);

@@ -27,6 +27,14 @@ export class AgendaController {
         res.status(201).json(await agendas.create(agenda));
     }
 
+    static async deleteAgenda(req, res) {
+        const agendas = new AgendaRepository(req.app.locals.database);
+        const agenda = await agendas.findById(req.params.id);
+        if (!agenda || agenda.ownerId !== req.user.id) throw createError(404, "Agenda introuvable.");
+        if (!await agendas.delete(agenda.id)) throw createError(404, "Agenda introuvable.");
+        res.status(204).end();
+    }
+
     static async updateAgenda(req, res) {
         const agendas = new AgendaRepository(req.app.locals.database);
         const agenda = await agendas.findById(req.params.id);
