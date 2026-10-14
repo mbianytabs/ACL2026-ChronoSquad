@@ -1,0 +1,41 @@
+
+const form = document.getElementById('login-form');
+const errorBox = document.getElementById('error');
+const submitBtn = form.querySelector('button[type="submit"]');
+
+function showError(message){
+    errorBox.textContent = message;
+    errorBox.hidden = false;
+}
+
+api.getMe()
+    .then(() => { window.location.href = '/agendas'; })
+    .catch(() => {   });
+
+form.addEventListener('input', () => { errorBox.hidden = true; });
+
+form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const username = form.username.value.trim();
+    const password = form.password.value;
+
+
+    if (!username || !password) {
+        showError("Saisissez votre nom d'utilisateur et votre mot de passe.");
+        return;
+    }
+
+    submitBtn.disabled = true;
+    try {
+        await api.login(username, password);
+        window.location.href = '/agendas';
+    } catch (err) {
+        if (err.status === 401) showError('Identifiants invalides.');
+        else if (err.status === 400) showError(err.message);
+        else if (err.status === 0) showError('Serveur injoignable. Réessayez.');
+        else showError('Connexion impossible. Réessayez.');
+    } finally {
+        submitBtn.disabled = false;
+    }
+});

@@ -1,1 +1,29 @@
-
+{
+  "name": "projet",
+  "version": "1.0.0",
+  "description": "",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node --watch backend/server.js",
+    "test:server": "node --test backend/tests/ServerTest.js",
+    "test:storage": "node --test backend/tests/SQLiteTest.js",
+    "test:auth": "node --test backend/tests/AuthTest.js",
+    "test": "node --test backend/tests/ServerTest.js backend/tests/SQLiteTest.js backend/tests/AuthTest.js"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "keywords": [],
+  "author": "Chronosquad",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "argon2": "^0.44.0",
+    "ejs": "^3.1.10",
+    "express": "^5.3.0",
+    "express-session": "^1.19.0",
+    "http-errors": "^2.0.1",
+    "morgan": "^1.12.1"
+  }
+}

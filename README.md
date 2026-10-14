@@ -1,44 +1,48 @@
-# ChronoSquad 📅
+# ChronoSquad
 
-Collaborative web calendar app built with Node.js by team **ChronoSquad**.
-Master's project (M1 Computer Science), Université de Lorraine.
+Application web de gestion d'agendas et d'événements réalisée en M1 Informatique à l'Université de Lorraine.
 
-## Features
+## Prérequis
 
-- Sign up, log in and log out
-- Create calendars and view several at once
-- Add, edit and delete appointments
-- *Coming next:* recurring events, search, sharing, import/export
+Installer **Node.js 22.13.0 minimum** et npm (fourni avec Node.js).
 
-## Requirements
+## Installation
 
-- [Node.js](https://nodejs.org) (LTS version)
-
-## Installation and launch
+Télécharger le projet ou cloner le dépôt :
 
 ```bash
-git clone <repository-link> #you can get the link here in github
-cd chronosquad-agenda
-npm install && npm start
+git clone https://github.com/mbianytabs/ACL2026-ChronoSquad.git
+cd ACL2026-ChronoSquad
 ```
 
-Then open **http://localhost:3000**.
-Other computers on the same network can connect with `http://<server-ip>:3000`.
+Dans le dossier du projet, installer les dépendances :
 
-## Project structure
-
-```
-├── server.js      # entry point (Express, port 3000)
-├── src/           # back-end: routes, services, models, storage
-├── public/        # front-end: HTML, CSS, JavaScript
-├── data/          # saved data (JSON files, created automatically)
-└── sprintN/       # Scrum documents for each sprint
+```bash
+npm install
 ```
 
-## Tech stack
+## Lancement
 
-Node.js · HTML/CSS/JavaScript · JSON file storage
+Aucune compilation n'est nécessaire. Pour lancer l'application :
 
-## Team
+```bash
+npm start
+```
 
-Manuel · Giovana · Navec · Farid · Kaoutar · Youssef
+Ouvrir [http://localhost:3000](http://localhost:3000) dans un navigateur.
+
+Pour arrêter le serveur, appuyer sur **Ctrl+C** dans le terminal.
+
+Pendant le développement, on peut utiliser `npm run dev` à la place de `npm start` pour redémarrer automatiquement le serveur après une modification.
+
+## Utilisation
+
+Créer un compte, puis se connecter pour créer, consulter, modifier et supprimer ses agendas et événements.
+
+Les données sont enregistrées automatiquement dans `data/chronosquad.sqlite`. Aucun serveur de base de données supplémentaire n'est nécessaire. Conserver ce fichier pour garder les données.
+
+Depuis un autre ordinateur du même réseau, ouvrir `http://<adresse-ip-du-serveur>:3000` en remplaçant `<adresse-ip-du-serveur>` par l'adresse IP du PC qui lance l'application.
+
+## Équipe
+
+Manuel · Giovana · Navec · Farid · Kaoutar
