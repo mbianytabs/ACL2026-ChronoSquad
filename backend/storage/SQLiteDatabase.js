@@ -32,7 +32,6 @@ export class SQLiteDatabase {
         this.connection.exec("PRAGMA foreign_keys = OFF");
         try {
             this.transaction(() => {
-                // Ne pas migrer une ancienne base déjà incohérente.
                 if (this.all("PRAGMA foreign_key_check").length) throw new Error("Relations SQLite invalides avant migration.");
                 const version = this.get("PRAGMA user_version").user_version;
                 this.connection.exec(sql);
@@ -45,8 +44,6 @@ export class SQLiteDatabase {
     }
 
     migrateEventTable() {
-        // Reconnaître l'ancienne table par sa relation avec agenda, sans garder
-        // son ancien nom dans le code. Renommer conserve toutes ses lignes.
         const tables = this.all(`SELECT name FROM sqlite_schema
             WHERE type = 'table' AND name <> 'evenement' AND sql LIKE '%agenda_id%'`);
         if (!tables.length) return;
@@ -56,7 +53,6 @@ export class SQLiteDatabase {
         const quote = name => '"' + name.replaceAll('"', '""') + '"';
         this.transaction(() => {
             this.connection.exec(`ALTER TABLE ${quote(tables[0].name)} RENAME TO evenement`);
-            // schema.sql recrée l'index avec le nom correspondant à evenement.
             for (const index of this.all("SELECT name FROM pragma_index_list('evenement') WHERE origin = 'c'")) {
                 this.connection.exec(`DROP INDEX ${quote(index.name)}`);
             }
@@ -73,7 +69,6 @@ export class SQLiteDatabase {
     all(sql, params = []) { return this.connection.prepare(sql).all(...params); }
     run(sql, params = []) { return this.connection.prepare(sql).run(...params); }
 
-    // Les transactions sont synchrones : aucun await entre BEGIN et COMMIT.
     transaction(action) {
         if (action.constructor.name === "AsyncFunction") {
             throw new TypeError("Une transaction SQLite attend une fonction synchrone.");
@@ -96,7 +91,6 @@ export class SQLiteDatabase {
 }
 
 let database;
-// Une seule connexion partagée par les repositories du serveur.
 export function getDatabase() {
     database ??= new SQLiteDatabase();
     return database;

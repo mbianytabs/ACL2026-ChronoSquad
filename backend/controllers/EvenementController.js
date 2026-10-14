@@ -18,9 +18,14 @@ function readEvenement(body, id, agendaId) {
 
 async function findOwnedEvenement(req, evenements) {
     const evenement = await evenements.findById(req.params.id);
+    if (!evenement) {
+        throw createError(404, "Événement introuvable.");
+    }
     const agendas = new AgendaRepository(req.app.locals.database);
-    const agenda = evenement && await agendas.findById(evenement.agendaId);
-    if (!agenda || agenda.ownerId !== req.user.id) throw createError(404, "Événement introuvable.");
+    const agenda = await agendas.findById(evenement.agendaId);
+    if (!agenda || agenda.ownerId !== req.user.id) {
+        throw createError(404, "Événement introuvable.");
+    }
     return evenement;
 }
 
@@ -33,7 +38,9 @@ export class EvenementController {
     static async createEvenement(req, res) {
         const agendas = new AgendaRepository(req.app.locals.database);
         const agenda = await agendas.findById(req.params.agendaId);
-        if (!agenda || agenda.ownerId !== req.user.id) throw createError(404, "Agenda introuvable.");
+        if (!agenda || agenda.ownerId !== req.user.id) {
+            throw createError(404, "Agenda introuvable.");
+        }
 
         const evenement = readEvenement(req.body, null, agenda.id);
         const evenements = new EvenementRepository(req.app.locals.database);
@@ -43,22 +50,29 @@ export class EvenementController {
     static async updateEvenement(req, res) {
         const evenements = new EvenementRepository(req.app.locals.database);
         const current = await findOwnedEvenement(req, evenements);
-        // Le formulaire peut déplacer l'événement vers un autre agenda du même utilisateur.
         const agendaId = req.body?.agendaId ?? current.agendaId;
-        if (typeof agendaId !== "string" || !agendaId.trim()) throw createError(400, "Agenda invalide.");
+        if (typeof agendaId !== "string" || !agendaId.trim()) {
+            throw createError(400, "Agenda invalide.");
+        }
         const agendas = new AgendaRepository(req.app.locals.database);
         const agenda = await agendas.findById(agendaId);
-        if (!agenda || agenda.ownerId !== req.user.id) throw createError(404, "Agenda introuvable.");
+        if (!agenda || agenda.ownerId !== req.user.id) {
+            throw createError(404, "Agenda introuvable.");
+        }
         const evenement = readEvenement(req.body, current.id, agenda.id);
         const updated = await evenements.update(current.id, evenement);
-        if (!updated) throw createError(404, "Événement introuvable.");
+        if (!updated) {
+            throw createError(404, "Événement introuvable.");
+        }
         res.json(updated);
     }
 
     static async deleteEvenement(req, res) {
         const evenements = new EvenementRepository(req.app.locals.database);
         const evenement = await findOwnedEvenement(req, evenements);
-        if (!await evenements.delete(evenement.id)) throw createError(404, "Événement introuvable.");
+        if (!await evenements.delete(evenement.id)) {
+            throw createError(404, "Événement introuvable.");
+        }
         res.status(204).end();
     }
 }

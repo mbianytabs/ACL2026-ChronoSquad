@@ -5,7 +5,6 @@ function toEvenement(row) {
     return row ? new Evenement(row.id, row.agenda_id, row.title, row.start, row.end, row.description, row.location) : null;
 }
 
-// Le modèle existant Evenement correspond à la table SQL evenement.
 export class EvenementRepository {
     constructor(db = getDatabase()) { this.db = db; }
 

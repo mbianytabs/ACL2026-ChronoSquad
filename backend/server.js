@@ -3,7 +3,6 @@ import { app } from "./app.js";
 import { getDatabase, closeDatabase } from "./storage/SQLiteDatabase.js";
 import { initializeDatabase, seedTestData } from "./storage/initializeDatabase.js";
 
-// Le sujet impose un serveur unique sur le port 3000.
 const PORT = 3000;
 const server = createServer(app);
 
@@ -22,7 +21,6 @@ server.on("error", (error) => {
     closeDatabase();
 });
 
-// Accepte aussi les navigateurs des autres machines du réseau local.
 try {
     const db = getDatabase();
     const migration = await initializeDatabase(db);

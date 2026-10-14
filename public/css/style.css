@@ -1,30 +1,27 @@
-/* ---------- Variables ---------- */
 :root {
-    --page: #ffffff;                        /* page background behind the glass */
+    --page: #ffffff;
     --text: #1c1e3a;
     --muted: rgba(28, 30, 58, 0.62);
     --faint: rgba(28, 30, 58, 0.40);
-    --line: rgba(28, 30, 58, 0.08);         /* calendar grid lines */
-    --tint: rgba(28, 30, 58, 0.05);         /* hover / selected fills */
+    --line: rgba(28, 30, 58, 0.08);
+    --tint: rgba(28, 30, 58, 0.05);
     --tint-strong: rgba(28, 30, 58, 0.09);
-    --ink: #1c1e3a;                         /* text on marigold */
-    --sun: #f5a524;                         /* today, brand mark, main actions */
+    --ink: #1c1e3a;
+    --sun: #f5a524;
     --sun-hover: #f7b544;
-    --now: #ff6b5e;                         /* current-time line */
+    --now: #ff6b5e;
     --danger: #b42318;
     --danger-bg: rgba(220, 53, 69, 0.10);
 
-    /* Liquid glass: frosted body, thick glowing edge, light-catching rim */
     --glass-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.40));
     --glass-blur: blur(28px) saturate(180%);
     --glass-shadow:
-        inset 0 1px 1px rgba(255, 255, 255, 1),         /* specular top edge */
-        inset 0 -1px 1px rgba(255, 255, 255, 0.7),      /* light bouncing off the bottom edge */
-        inset 0 0 22px rgba(255, 255, 255, 0.65),       /* thickness of the glass at its edges */
-        0 0 0 1px rgba(28, 30, 58, 0.07),               /* hairline so the edge reads on white */
+        inset 0 1px 1px rgba(255, 255, 255, 1),
+        inset 0 -1px 1px rgba(255, 255, 255, 0.7),
+        inset 0 0 22px rgba(255, 255, 255, 0.65),
+        0 0 0 1px rgba(28, 30, 58, 0.07),
         0 2px 6px rgba(28, 30, 58, 0.05),
         0 18px 44px rgba(28, 30, 58, 0.10);
-    /* Rim: bright where light hits (top-left, bottom-right), darker on the sides */
     --glass-rim: linear-gradient(135deg,
         #ffffff 0%,
         rgba(255, 255, 255, 0.3) 28%,
@@ -34,12 +31,11 @@
 
     --radius-sm: 10px;
     --radius-lg: 22px;
-    --hour-height: 48px;                    /* must match HOUR_HEIGHT in agendas.js */
+    --hour-height: 48px;
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-    --spring: cubic-bezier(0.34, 1.36, 0.64, 1);   /* slight overshoot, like glass settling */
+    --spring: cubic-bezier(0.34, 1.36, 0.64, 1);
 }
 
-/* ---------- Base ---------- */
 * {
     box-sizing: border-box;
 }
@@ -54,7 +50,6 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* Soft color fields behind the glass: what the blur refracts */
 body::before {
     content: "";
     position: fixed;
@@ -95,7 +90,6 @@ a {
     display: none !important;
 }
 
-/* ---------- Glass surfaces ---------- */
 .glass,
 .auth .card {
     position: relative;
@@ -106,7 +100,6 @@ a {
     box-shadow: var(--glass-shadow);
 }
 
-/* The rim, drawn as a gradient border that only covers the edge */
 .glass::after,
 .auth .card::after,
 .btn.btn-create::after,
@@ -127,7 +120,6 @@ a {
     pointer-events: none;
 }
 
-/* ---------- Top bar: sits on the page, only its controls are glass ---------- */
 .topbar {
     display: flex;
     align-items: center;
@@ -146,7 +138,6 @@ a {
     text-decoration: none;
 }
 
-/* The sun dot: same marigold that marks today in the calendar */
 .brand-mark {
     width: 14px;
     height: 14px;
@@ -177,7 +168,6 @@ a {
     color: var(--muted);
 }
 
-/* ---------- Auth pages (login, register) ---------- */
 body:has(> .auth) {
     display: flex;
     flex-direction: column;
@@ -210,7 +200,6 @@ body:has(> .auth) {
     color: var(--muted);
 }
 
-/* ---------- Card and form ---------- */
 .card {
     display: flex;
     flex-direction: column;
@@ -267,7 +256,6 @@ input[type="checkbox"]:focus-visible,
     outline-offset: 2px;
 }
 
-/* ---------- Buttons ---------- */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -287,7 +275,6 @@ input[type="checkbox"]:focus-visible,
     transition: transform 160ms var(--ease-out), background-color 150ms ease;
 }
 
-/* Feedback on press, not on release */
 .btn:active {
     transform: scale(0.97);
 }
@@ -297,7 +284,6 @@ input[type="checkbox"]:focus-visible,
     cursor: wait;
 }
 
-/* Small glass pills and round buttons (Aujourd'hui, ‹ ›, Se déconnecter) */
 .btn.btn-glass {
     position: relative;
     background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.55));
@@ -321,7 +307,6 @@ input[type="checkbox"]:focus-visible,
     font-size: 1rem;
 }
 
-/* Main action of a form: marigold */
 .btn.btn-primary {
     height: 46px;
     margin-top: 24px;
@@ -331,7 +316,6 @@ input[type="checkbox"]:focus-visible,
     border-radius: var(--radius-sm);
 }
 
-/* "Créer": the most raised piece of glass, centered in the sidebar */
 .btn.btn-create {
     position: relative;
     align-self: center;
@@ -359,7 +343,6 @@ input[type="checkbox"]:focus-visible,
     transition: transform 200ms var(--ease-out);
 }
 
-/* The "+" turns into a "×" while the sheet is open */
 .btn-create[aria-expanded="true"] .btn-icon-glyph {
     transform: rotate(45deg);
 }
@@ -379,7 +362,6 @@ input[type="checkbox"]:focus-visible,
     }
 }
 
-/* ---------- Messages ---------- */
 .error {
     margin: 12px 0 0;
     padding: 10px 14px;
@@ -399,7 +381,6 @@ input[type="checkbox"]:focus-visible,
     text-align: center;
 }
 
-/* ---------- Agendas page layout ---------- */
 body:has(> .home) {
     display: flex;
     flex-direction: column;
@@ -416,16 +397,13 @@ body:has(> .home) {
     padding: 0 16px 16px;
 }
 
-/* ---------- Sidebar ---------- */
 .sidebar {
     min-height: 0;
     overflow: hidden;
     border-radius: var(--radius-lg);
-    /* heavier, darker glass: a structural region */
     background: linear-gradient(160deg, rgba(244, 245, 251, 0.78), rgba(244, 245, 251, 0.52));
 }
 
-/* Content scrolls inside, so the glass rim stays in place */
 .sidebar-scroll {
     display: flex;
     flex-direction: column;
@@ -435,14 +413,12 @@ body:has(> .home) {
     overflow-y: auto;
 }
 
-/* Thin, translucent scrollbars that don't break the glass */
 .sidebar-scroll,
 .week-body {
     scrollbar-width: thin;
     scrollbar-color: rgba(28, 30, 58, 0.18) transparent;
 }
 
-/* Items keep their size; the sidebar scrolls instead */
 .sidebar-scroll > * {
     flex-shrink: 0;
 }
@@ -456,7 +432,6 @@ body:has(> .home) {
     padding: 0 6px;
 }
 
-/* ---------- Mini calendar ---------- */
 .mini-head {
     display: flex;
     align-items: center;
@@ -510,7 +485,6 @@ body:has(> .home) {
     cursor: pointer;
 }
 
-/* Days of the week shown on the right */
 .mini-day.in-week {
     background: var(--tint-strong);
 }
@@ -531,7 +505,6 @@ body:has(> .home) {
     }
 }
 
-/* ---------- Agenda list ---------- */
 .section-title {
     margin-bottom: 6px;
     padding: 0 6px;
@@ -540,7 +513,6 @@ body:has(> .home) {
     letter-spacing: 0;
 }
 
-/* Text-only button (Créer un agenda) */
 .link-btn {
     padding: 2px 4px;
     font: inherit;
@@ -602,7 +574,6 @@ body:has(> .home) {
     transform: scale(0.98);
 }
 
-/* While one agenda is shown, the others step back */
 .agenda-list:has([aria-pressed="true"]) .agenda-item[aria-pressed="false"] {
     color: var(--muted);
 }
@@ -658,7 +629,6 @@ body:has(> .home) {
     color: color-mix(in srgb, var(--agenda-color) 60%, var(--text));
 }
 
-/* Liquid glass lens behind the selected agenda: glides between rows, tinted by the agenda */
 .agenda-lens {
     position: absolute;
     top: 0;
@@ -695,7 +665,6 @@ body:has(> .home) {
     transition: none;
 }
 
-/* ---------- Week view ---------- */
 .calendar {
     display: flex;
     flex-direction: column;
@@ -710,7 +679,6 @@ body:has(> .home) {
     overflow-y: auto;
 }
 
-/* Day headers stay pinned; content scrolls under a frosted edge */
 .week-head {
     position: sticky;
     top: 0;
@@ -791,7 +759,7 @@ body:has(> .home) {
     font-size: 0.6875rem;
     color: var(--faint);
     text-align: right;
-    transform: translateY(-0.55em); /* label sits on its hour line */
+    transform: translateY(-0.55em);
 }
 
 .hours span:first-child {
@@ -810,7 +778,6 @@ body:has(> .home) {
     background-color: rgba(245, 165, 36, 0.06);
 }
 
-/* Current time */
 .now-line {
     position: absolute;
     left: 0;
@@ -831,13 +798,10 @@ body:has(> .home) {
     border-radius: 50%;
 }
 
-/* Clicking an empty slot starts a tache on that time */
 .week-columns {
     cursor: cell;
 }
 
-/* ---------- Taches in the week view ---------- */
-/* Small panes of glass tinted by their agenda, with a solid edge in its color */
 .event {
     position: absolute;
     margin: 0;
@@ -884,7 +848,6 @@ body:has(> .home) {
     opacity: 0.8;
 }
 
-/* Short taches: title and time on one line */
 .event.compact {
     flex-direction: row;
     align-items: center;
@@ -909,7 +872,6 @@ body:has(> .home) {
     }
 }
 
-/* Card whose details are open */
 .event.active {
     z-index: 2;
     box-shadow:
@@ -932,7 +894,6 @@ body:has(> .home) {
     }
 }
 
-/* Shown over the empty calendar until an agenda is selected */
 .calendar-hint {
     position: absolute;
     top: 52%;
@@ -963,8 +924,6 @@ body:has(> .home) {
     transform: translateY(10px) scale(0.96);
 }
 
-/* ---------- Details of a tache ---------- */
-/* Glass card beside the clicked tache, lit by its agenda's color */
 .event-pop {
     position: fixed;
     inset: auto;
@@ -1020,12 +979,10 @@ body:has(> .home) {
     }
 }
 
-/* The page stays visible: only the card floats */
 .event-pop::backdrop {
     background: transparent;
 }
 
-/* Glow of the agenda's color caught at the top of the glass */
 .event-pop::before {
     content: "";
     position: absolute;
@@ -1113,7 +1070,6 @@ body:has(> .home) {
     color: var(--faint);
 }
 
-/* ---------- Creation sheet ---------- */
 .visually-hidden {
     position: absolute;
     width: 1px;
@@ -1123,7 +1079,6 @@ body:has(> .home) {
     white-space: nowrap;
 }
 
-/* Rises from the bottom center; the thickest piece of glass on the page */
 .create-sheet {
     width: min(580px, calc(100vw - 32px));
     max-width: none;
@@ -1153,7 +1108,6 @@ body:has(> .home) {
         display 520ms allow-discrete;
 }
 
-/* Leaving: sinks back down, quicker and without the bounce */
 .create-sheet:not([open]) {
     opacity: 0;
     transform: translateY(48px) scale(0.96);
@@ -1171,7 +1125,6 @@ body:has(> .home) {
     }
 }
 
-/* Light from above caught in the glass */
 .create-sheet::before {
     content: "";
     position: absolute;
@@ -1225,7 +1178,6 @@ body:has(> .home) {
     gap: 12px;
 }
 
-/* Tâche | Agenda switch with a glass thumb that slides */
 .segmented {
     position: relative;
     flex: 1;
@@ -1305,7 +1257,6 @@ body:has(> .home) {
     }
 }
 
-/* Big borderless title, underlined in marigold when focused */
 .create-sheet .title-input {
     height: 52px;
     padding: 0 4px;
@@ -1356,7 +1307,6 @@ body:has(> .home) {
     resize: vertical;
 }
 
-/* Agenda picker: a field that shows chips, opening a checklist below */
 .picker-btn {
     position: relative;
     display: flex;
@@ -1373,7 +1323,6 @@ body:has(> .home) {
     cursor: pointer;
 }
 
-/* Chevron */
 .picker-btn::after {
     content: "";
     position: absolute;
@@ -1444,7 +1393,6 @@ body:has(> .home) {
     }
 }
 
-/* Opens by growing its row from 0 to its content height */
 .picker-panel {
     display: grid;
     grid-template-rows: 0fr;
@@ -1495,7 +1443,6 @@ body:has(> .home) {
     }
 }
 
-/* Checkbox drawn in the agenda's own color */
 .picker-option input[type="checkbox"] {
     flex: none;
     appearance: none;
@@ -1512,7 +1459,6 @@ body:has(> .home) {
     background: var(--agenda-color) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
 }
 
-/* Color swatches for a new agenda */
 .swatches {
     display: flex;
     flex-wrap: wrap;
@@ -1558,7 +1504,6 @@ body:has(> .home) {
     }
 }
 
-/* "Other color": rainbow until a color is chosen, the native picker sits on top */
 .swatch-custom:not([style]) span {
     background: conic-gradient(#ef4444, #eab308, #10b981, #14b8a6, #3b82f6, #8b5cf6, #ec4899, #ef4444);
     --swatch: #8b5cf6;
@@ -1573,7 +1518,6 @@ body:has(> .home) {
     cursor: pointer;
 }
 
-/* How the agenda will look in the sidebar */
 .agenda-preview {
     display: flex;
     align-items: center;
@@ -1622,7 +1566,6 @@ body:has(> .home) {
         0 6px 16px rgba(245, 165, 36, 0.40);
 }
 
-/* ---------- Small screens ---------- */
 @media (max-width: 860px) {
     .topbar {
         flex-wrap: wrap;
@@ -1689,7 +1632,6 @@ body:has(> .home) {
     }
 }
 
-/* Small screens: the details dock at the bottom instead of beside the card */
 @media (max-width: 600px) {
     .event-pop {
         top: auto;
@@ -1716,7 +1658,6 @@ body:has(> .home) {
     }
 }
 
-/* ---------- Accessibility preferences ---------- */
 @media (prefers-reduced-motion: reduce) {
     .btn,
     .btn-icon-glyph,
@@ -1775,9 +1716,7 @@ body:has(> .home) {
     }
 }
 
-/* ---------- Modify / delete ---------- */
 
-/* Title of the sheet while modifying (the Tâche | Agenda switch is hidden then) */
 .sheet-title {
     flex: 1;
     min-width: 0;
@@ -1795,7 +1734,6 @@ body:has(> .home) {
     }
 }
 
-/* Second step of a deletion: the button asks for confirmation */
 .btn.btn-danger.confirm {
     color: #ffffff;
     background: var(--danger);
@@ -1812,7 +1750,6 @@ body:has(> .home) {
     margin-top: 18px;
 }
 
-/* Pencil beside each agenda of the sidebar */
 .agenda-list li {
     display: flex;
     align-items: center;
@@ -1863,16 +1800,13 @@ body:has(> .home) {
     outline-offset: 2px;
 }
 
-/* No hover on touch screens: always show the pencil */
 @media (hover: none) {
     .agenda-edit {
         opacity: 1;
     }
 }
 
-/* ---------- Tache typed straight in the week view ---------- */
 
-/* Editable card: same glass as a tache, raised above the others */
 .event.draft {
     z-index: 3;
     gap: 2px;

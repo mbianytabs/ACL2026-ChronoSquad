@@ -1,6 +1,3 @@
-/**
- * Classe qui represente un utilisateur
- */
 import argon2 from "argon2";
 
 export class User{
@@ -8,13 +5,6 @@ export class User{
     #username;
     #passwordHash;
     #createdAt;
-    /**
-     * Constructeur
-     * @param {*} id -identifiant unique
-     * @param {*} name - nom
-     * @param {*} pwd - mot de passe
-     * @param {*} createdAt
-     */
     constructor(id, name, pwd,createdAt = new Date()){
          if ((id !== null && (!Number.isSafeInteger(id) || id < 1)) || !name || !pwd) {
             throw new Error("id doit être un entier positif ou null avant création ; username et passwordHash sont obligatoires");
@@ -33,17 +23,9 @@ export class User{
         return this.#username;
     }
     get createdAt() { return new Date(this.#createdAt); }
-    /**
-     * Compare un mot de passe fourni avec celui de l'utilisateur
-     * @param {string} hash
-     * @returns {boolean}
-     */
     async verifyPassword(plain) {
         return argon2.verify(this.#passwordHash,plain);
     }
-/**
- * Pour la persistance
- */
 toRecord(){
 return {
             id: this.#id,
@@ -52,9 +34,6 @@ return {
             createdAt: this.#createdAt,
         };
 }
-/**
- * Sérialisation
- */
 toJSON() {
         return {
             id: this.#id,

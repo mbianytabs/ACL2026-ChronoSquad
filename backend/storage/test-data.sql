@@ -1,7 +1,3 @@
--- Données de démonstration utilisées par GET /api/test/user-agenda.
--- Les CREATE TABLE sont dans schema.sql, exécuté avant ce fichier.
--- Mot de passe de démonstration : sqlite-demo-123 (stocké sous forme Argon2).
--- Relancer le serveur ne crée pas de doublons et ne remplace pas les données.
 INSERT INTO user (username, password_hash, created_at)
 VALUES (
     'sqlite_demo',

@@ -1,7 +1,4 @@
-// api.js: the only file that talks to the server.
-// Every page script calls api.xxx() and never uses fetch directly.
 
-// Error thrown by every api call, carrying the HTTP status (0 = network failure)
 class ApiError extends Error{
     constructor(status, message){
         super(message);
@@ -9,8 +6,6 @@ class ApiError extends Error{
     }
 }
 
-// Sends a JSON request to the server and returns the parsed response body.
-// Throws an ApiError when the server is unreachable or answers with an error status.
 async function request(method, url, body){
     const options = {method, headers:{}, credentials: 'same-origin'};
     if (body !== undefined){
@@ -25,7 +20,6 @@ async function request(method, url, body){
         throw new ApiError(0,'Server injoignable.');
     }
 
-    // 204 has no body, so read text first and parse only if there is something
     const text = await response.text();
     let data = null;
     if (text){
@@ -43,48 +37,32 @@ async function request(method, url, body){
     return data;
 }
 
-/**
- * API Routes
- */
 
 const api = {
-    // create a new account
     register: (username, password) => request('POST','/api/users',{username,password}),
 
-    // Return a logged-in user
     getMe: () => request('GET','/api/users/me'),
 
-    // Open a session for the given credentials
     login: (username, password) => request('POST','/api/auth/login',{username,password}),
 
-    // Close the current session
     logout: () => request('POST','/api/auth/logout'),
 
-    // Lists the agendas of the logged-in user
     getAgendas:() => request('GET','/api/agendas'),
 
-    // Returns one agenda by its id
     getAgenda: (id) => request('GET', '/api/agendas/' + encodeURIComponent(id)),
 
-    // Creates an agenda for the logged-in user
     createAgenda: (name, color) => request('POST', '/api/agendas', { name, color }),
 
-    // Renames or recolors an agenda: { name, color }
     updateAgenda: (id, data) => request('PUT', '/api/agendas/' + encodeURIComponent(id), data),
 
-    // Deletes an agenda and all its taches
     deleteAgenda: (id) => request('DELETE', '/api/agendas/' + encodeURIComponent(id)),
 
-    // Lists the taches (evenements) of every agenda of the logged-in user
     getEvenements: () => request('GET', '/api/evenements'),
 
-    // Creates a tache in one agenda: { title, start, end, location, description }
     createEvenement: (agendaId, data) =>
         request('POST', '/api/agendas/' + encodeURIComponent(agendaId) + '/evenements', data),
 
-    // Updates a tache: { agendaId, title, start, end, location, description }
     updateEvenement: (id, data) => request('PUT', '/api/evenements/' + encodeURIComponent(id), data),
 
-    // Deletes a tache
     deleteEvenement: (id) => request('DELETE', '/api/evenements/' + encodeURIComponent(id)),
 };

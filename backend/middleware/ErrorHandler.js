@@ -1,8 +1,7 @@
 export function errorHandler(error, req, res, next) {
     if (res.headersSent) return next(error);
 
-    const status = Number.isInteger(error.status) &&
-        error.status >= 400 && error.status <= 599 ? error.status : 500;
+    const status = error.status || 500;
 
     if (status >= 500) console.error(error);
 
@@ -17,10 +16,8 @@ export function errorHandler(error, req, res, next) {
         message = error.expose ? error.message : "Requête invalide.";
     }
 
-    // req.originalUrl conserve /api même après la sortie du routeur.
-    const pathname = req.originalUrl.split("?")[0];
-    const isApi = pathname.toLowerCase() === "/api" ||
-        pathname.toLowerCase().startsWith("/api/");
+    const pathname = req.originalUrl.split("?")[0].toLowerCase();
+    const isApi = pathname === "/api" || pathname.startsWith("/api/");
 
     if (isApi) {
         return res.status(status).json({ error: message });

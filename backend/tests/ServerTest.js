@@ -17,7 +17,6 @@ before(async () => {
     server = createServer(app);
     await new Promise((resolve, reject) => {
         server.once("error", reject);
-        // Port temporaire : les tests n'occupent pas le port de l'application.
         server.listen(0, "127.0.0.1", resolve);
     });
     baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -34,7 +33,6 @@ after(async () => {
 });
 
 test("la route de test renvoie un utilisateur et son agenda depuis SQLite sans exposer le hash", async () => {
-    // Deux exécutions du SQL ne doivent créer aucun doublon.
     await seedTestData(app.locals.database);
     assert.equal(app.locals.database.get("SELECT count(*) AS n FROM user").n, 1);
     assert.equal(app.locals.database.get("SELECT count(*) AS n FROM agenda").n, 1);
@@ -144,7 +142,6 @@ test("les sources et les données ne sont jamais servies comme fichiers publics"
 });
 
 test("les erreurs asynchrones passent par le gestionnaire sans fuite technique", async () => {
-    // Application de test isolée : aucune route de panne ajoutée au vrai serveur.
     const isolated = express();
     isolated.set("views", app.get("views"));
     isolated.set("view engine", "ejs");

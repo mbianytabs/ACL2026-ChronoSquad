@@ -6,7 +6,7 @@ import { readCredentials } from "./Credentials.js";
 
 export class UserController {
     static async register(req, res) {
-        const { username, password } = readCredentials(req.body, { registration: true });
+        const { username, password } = readCredentials(req.body, true);
         const users = new UserRepository(req.app.locals.database);
         if (await users.findByUsername(username)) {
             throw createError(409, "Ce nom d'utilisateur est déjà pris.");
@@ -16,20 +16,16 @@ export class UserController {
         try {
             user = await users.create(user);
         } catch (error) {
-            // Deux inscriptions simultanées peuvent passer le premier SELECT.
-            // La contrainte UNIQUE SQLite reste la garantie finale.
-            if (error.code === "ERR_SQLITE_ERROR" && error.errcode === 2067) {
+            if (await users.findByUsername(username)) {
                 throw createError(409, "Ce nom d'utilisateur est déjà pris.");
             }
             throw error;
         }
         res.set("Cache-Control", "no-store");
-        // L'inscription crée le compte ; la connexion est une requête distincte.
         res.status(201).json(user);
     }
 
     static getCurrentUser(req, res) {
-        // requireAuth a déjà vérifié la connexion et renseigné req.user.
         res.json(req.user);
     }
 }

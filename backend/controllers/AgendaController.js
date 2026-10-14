@@ -11,14 +11,15 @@ export class AgendaController {
     static async getAgenda(req, res) {
         const agendas = new AgendaRepository(req.app.locals.database);
         const agenda = await agendas.findById(req.params.id);
-        if (!agenda || agenda.ownerId !== req.user.id) throw createError(404, "Agenda introuvable.");
+        if (!agenda || agenda.ownerId !== req.user.id) {
+            throw createError(404, "Agenda introuvable.");
+        }
         res.json(agenda);
     }
 
     static async createAgenda(req, res) {
         let agenda;
         try {
-            // L'identifiant sera choisi par SQLite ; le propriétaire vient de la session.
             agenda = new Agenda(null, req.body?.name, req.user.id, req.body?.color);
         } catch (error) {
             throw createError(400, error.message);
@@ -30,15 +31,21 @@ export class AgendaController {
     static async deleteAgenda(req, res) {
         const agendas = new AgendaRepository(req.app.locals.database);
         const agenda = await agendas.findById(req.params.id);
-        if (!agenda || agenda.ownerId !== req.user.id) throw createError(404, "Agenda introuvable.");
-        if (!await agendas.delete(agenda.id)) throw createError(404, "Agenda introuvable.");
+        if (!agenda || agenda.ownerId !== req.user.id) {
+            throw createError(404, "Agenda introuvable.");
+        }
+        if (!await agendas.delete(agenda.id)) {
+            throw createError(404, "Agenda introuvable.");
+        }
         res.status(204).end();
     }
 
     static async updateAgenda(req, res) {
         const agendas = new AgendaRepository(req.app.locals.database);
         const agenda = await agendas.findById(req.params.id);
-        if (!agenda || agenda.ownerId !== req.user.id) throw createError(404, "Agenda introuvable.");
+        if (!agenda || agenda.ownerId !== req.user.id) {
+            throw createError(404, "Agenda introuvable.");
+        }
         if (typeof req.body?.name !== "string" || typeof req.body?.color !== "string") {
             throw createError(400, "Le nom et la couleur sont requis.");
         }
@@ -49,7 +56,9 @@ export class AgendaController {
             throw createError(400, error.message);
         }
         const updated = await agendas.update(agenda);
-        if (!updated) throw createError(404, "Agenda introuvable.");
+        if (!updated) {
+            throw createError(404, "Agenda introuvable.");
+        }
         res.json(updated);
     }
 }

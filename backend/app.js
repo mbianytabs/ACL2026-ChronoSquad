@@ -19,12 +19,9 @@ app.use(morgan("dev"));
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: false, limit: "100kb" }));
 
-// L'API passe avant les fichiers publics : /api répond toujours en JSON.
 app.use("/api", sessionMiddleware, apiRouter);
 app.use("/", pageRouter);
 
-// Seul public/ est accessible ; backend/ et data/ restent privés.
-// La route GET / est déclarée explicitement dans PageRoutes.js.
 app.use(express.static(publicPath, { index: false }));
 
 app.use((req, res, next) => next(createError(404)));

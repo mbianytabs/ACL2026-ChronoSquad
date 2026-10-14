@@ -1,6 +1,3 @@
-/**
- * Classe qui gère un agenda
- */
 
 export class Agenda{
     #id;
@@ -8,20 +5,13 @@ export class Agenda{
     #color;
     #ownerId;
     #createdAt;
-    /**
-     * constructeur
-     * @param {*} id 
-     * @param {*} name 
-     * @param {*} ownerId 
-     * @param {*} color 
-     */
     constructor(id, name,ownerId, color = "#3b82f6",createdAt = new Date()){
-       
+
         if ((id !== null && !id) || !ownerId) {
             throw new Error("id et ownerId sont obligatoires");
         }
         Agenda.#validateName(name);
-        Agenda.#validateColor(color); 
+        Agenda.#validateColor(color);
         this.#id = id;
         this.#name = name.trim();
         this.#ownerId = ownerId;
@@ -29,7 +19,6 @@ export class Agenda{
         this.#createdAt = new Date(createdAt);
     }
 
-    //Getters
 
     get id() { return this.#id; }
     get name() { return this.#name; }
@@ -37,7 +26,6 @@ export class Agenda{
     get ownerId() { return this.#ownerId; }
     get createdAt() { return new Date(this.#createdAt); }
 
-    //Validation 
     static #validateName(name) {
     if (typeof name !== "string" || name.trim().length === 0) {
         throw new Error("Le nom de l'agenda est obligatoire");
@@ -48,30 +36,16 @@ export class Agenda{
             throw new Error("La couleur doit être au format #RRGGBB");
         }
     }
-    
-    /**
-     * Modifie le nom 
-     * @param {*} newName 
-     */
+
     rename(newName){
-        //à valider
         Agenda.#validateName(newName);
         this.#name = newName.trim();
     }
-    /**
-     * Change de couleur
-     * @param {*} newColor 
-     */
     changeColor(newColor) {
-        //à valider
         Agenda.#validateColor(newColor);
         this.#color = newColor;
     }
-    
-    /**
-     * sérialisation
-     * @returns 
-     */
+
     toJSON() {
         return {
             id: this.#id,

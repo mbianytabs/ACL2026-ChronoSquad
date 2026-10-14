@@ -1,4 +1,3 @@
-// agendas.js: logic of the home page (views/agendas.ejs)
 
 const userLabel = document.getElementById('current-user');
 const logoutBtn = document.getElementById('logout-btn');
@@ -16,7 +15,6 @@ const weekDays = document.getElementById('week-days');
 const weekColumns = document.getElementById('week-columns');
 const hours = document.getElementById('hours');
 
-// Creation sheet
 const dialog = document.getElementById('create-dialog');
 const createForm = document.getElementById('create-form');
 const dialogError = document.getElementById('dialog-error');
@@ -42,7 +40,6 @@ const colorCustomRadio = document.getElementById('color-custom-radio');
 const agendaPreview = document.getElementById('agenda-preview');
 const agendaPreviewName = document.getElementById('agenda-preview-name');
 
-// Details of a tache
 const eventDialog = document.getElementById('event-dialog');
 const eventTitle = document.getElementById('event-title');
 const eventWhen = document.getElementById('event-when');
@@ -53,129 +50,67 @@ const eventDescription = document.getElementById('event-description');
 const eventError = document.getElementById('event-error');
 const eventDeleteBtn = document.getElementById('event-delete');
 
-const HOUR_HEIGHT = 48; // px, must match --hour-height in style.css
+const HOUR_HEIGHT = 48;
 
 const today = new Date();
-let weekStart = startOfWeek(today);                                   // Monday of the week shown on the right
-let miniMonth = new Date(today.getFullYear(), today.getMonth(), 1);  // month shown in the mini calendar
+let weekStart = startOfWeek(today);
+let miniMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
 let agendas = [];
 let evenements = [];
-let selectedAgendaId = null;      // agenda whose taches are shown; null = empty calendar
-let pickedAgendaIds = new Set();  // agendas ticked in the sheet for the new tache
-let activeCard = null;            // card of the tache whose details are open
-let shownEvent = null;            // tache whose details are open
-let editing = null;               // what the sheet modifies: { kind: 'tache'|'agenda', item }, or null when it creates
-let draft = null;                 // tache being typed straight in the week view: { start, end, block }
+let selectedAgendaId = null;
+let pickedAgendaIds = new Set();
+let activeCard = null;
+let shownEvent = null;
+let editing = null;
+let draft = null;
 
-/**
- * Shows an error message in the sidebar error box
- * @param {string} message the message to show
- */
 function showError(message) {
     errorBox.textContent = message;
     errorBox.hidden = false;
 }
 
-/**
- * Sends the user back to the login page (used when the session is missing or expired)
- */
 function goToLogin() {
     window.location.href = '/';
 }
 
-/**
- * Returns a new date shifted by a number of days (the original date is not changed)
- * @param {Date} date the starting date
- * @param {number} days number of days to add (negative to go back)
- * @returns {Date} the shifted date, at midnight
- */
 function addDays(date, days) {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 }
 
-/**
- * Returns the Monday of the week containing the date
- * @param {Date} date any day of the week
- * @returns {Date} the Monday of that week, at midnight
- */
 function startOfWeek(date) {
     return addDays(date, -((date.getDay() + 6) % 7));
 }
 
-/**
- * Tells whether two dates fall on the same calendar day
- * @param {Date} a first date
- * @param {Date} b second date
- * @returns {boolean} true if both dates are the same day
- */
 function isSameDay(a, b) {
     return a.toDateString() === b.toDateString();
 }
 
-/**
- * Puts the first letter of a text in upper case
- * @param {string} text the text to capitalize
- * @returns {string} the text with an upper case first letter
- */
 function capitalize(text) {
     return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-/**
- * Writes a number on two digits, e.g. 7 -> "07"
- * @param {number} n the number to pad
- * @returns {string} the number on at least two digits
- */
 function pad(n) {
     return String(n).padStart(2, '0');
 }
 
-/**
- * Formats a date for an <input type="date">, in local time
- * @param {Date} date the date to format
- * @returns {string} the date as "YYYY-MM-DD"
- */
 function toDateInput(date) {
     return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
 }
 
-/**
- * Formats the time of a date for an <input type="time">, in local time
- * @param {Date} date the date to format
- * @returns {string} the time as "HH:MM"
- */
 function toTimeInput(date) {
     return pad(date.getHours()) + ':' + pad(date.getMinutes());
 }
 
-/**
- * Formats the time of a date for display, French style
- * @param {Date} date the date to format
- * @returns {string} the time as "HH:MM"
- */
 function formatTime(date) {
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 }
 
-/**
- * Finds a loaded agenda by its id
- * @param {string} id the id of the agenda
- * @returns {Object|undefined} the agenda, or undefined if it is not loaded
- */
 function findAgenda(id) {
     return agendas.find((a) => a.id === id);
 }
 
-// ---------- Sidebar: agendas act as a filter ----------
 
-/**
- * Builds one <li> for an agenda in the sidebar: its color dot, its name and its number of taches.
- * Clicking it shows only its taches; clicking it again shows every agenda.
- * textContent is used so a name can never inject HTML.
- * @param {Object} agenda the agenda to show ({ id, name, color, createdAt })
- * @returns {HTMLLIElement} the list item to insert
- */
 function createAgendaRow(agenda) {
     const item = document.createElement('li');
 
@@ -201,7 +136,6 @@ function createAgendaRow(agenda) {
     badge.textContent = count || '';
     badge.setAttribute('aria-label', count + (count > 1 ? ' tâches' : ' tâche'));
 
-    // Clicking the shown agenda again unselects it and puts the calendar back to its default view
     button.addEventListener('click', () => {
         if (agenda.id === selectedAgendaId) {
             selectAgenda(null);
@@ -225,9 +159,6 @@ function createAgendaRow(agenda) {
     return item;
 }
 
-/**
- * Redraws the list of agendas in the sidebar and places the highlight on the selected one
- */
 function renderAgendaList() {
     list.replaceChildren(...agendas.map(createAgendaRow));
     emptyMessage.hidden = agendas.length > 0;
@@ -235,12 +166,8 @@ function renderAgendaList() {
     updateCalendarHint();
 }
 
-/**
- * Shows only the taches of one agenda in the week view and highlights it in the sidebar
- * @param {string|null} id the id of the agenda to show, or null for an empty calendar
- */
 function selectAgenda(id) {
-    cancelDraft(); // an unfinished tache belongs to the view it was started in
+    cancelDraft();
     selectedAgendaId = id;
     list.querySelectorAll('.agenda-item').forEach((button) => {
         button.setAttribute('aria-pressed', String(button.dataset.id === id));
@@ -250,10 +177,6 @@ function selectAgenda(id) {
     renderEvents();
 }
 
-/**
- * Shows a hint over the empty calendar while no agenda is selected
- * (create an agenda first if there is none yet)
- */
 function updateCalendarHint() {
     calendarHint.textContent = agendas.length
         ? 'Sélectionnez un agenda pour afficher ses tâches'
@@ -263,10 +186,6 @@ function updateCalendarHint() {
     calendarHint.setAttribute('aria-hidden', String(gone));
 }
 
-/**
- * Moves the glass highlight (lens) behind the selected agenda and gives it that agenda's color.
- * Hides the lens when no agenda is selected.
- */
 function moveLens() {
     const active = list.querySelector('.agenda-item[aria-pressed="true"]');
     if (!active) {
@@ -274,7 +193,6 @@ function moveLens() {
         return;
     }
 
-    // Appearing: place it at once instead of sliding from its last position
     const appearing = !lens.classList.contains('visible');
     if (appearing) lens.classList.add('jump');
 
@@ -283,16 +201,12 @@ function moveLens() {
     lens.style.transform = 'translateY(' + active.offsetTop + 'px)';
 
     if (appearing) {
-        lens.getBoundingClientRect(); // apply the position before turning transitions back on
+        lens.getBoundingClientRect();
         lens.classList.remove('jump');
     }
     lens.classList.add('visible');
 }
 
-/**
- * Draws the mini calendar of the sidebar: 6 weeks, Monday first.
- * The shown week and today are highlighted; clicking a day shows its week.
- */
 function renderMini() {
     miniLabel.textContent = capitalize(miniMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
 
@@ -320,10 +234,6 @@ function renderMini() {
     }
 }
 
-/**
- * Draws the week view: header with the 7 days, one column per day, today highlighted,
- * then places the taches of the week
- */
 function renderWeek() {
     const weekEnd = addDays(weekStart, 6);
     const sameMonth = weekStart.getMonth() === weekEnd.getMonth();
@@ -334,7 +244,7 @@ function renderWeek() {
 
     weekDays.replaceChildren();
     weekColumns.replaceChildren();
-    draft = null; // its card went with the old columns
+    draft = null;
     for (let i = 0; i < 7; i++) {
         const day = addDays(weekStart, i);
         const isToday = isSameDay(day, today);
@@ -363,23 +273,17 @@ function renderWeek() {
     renderEvents();
 }
 
-// ---------- Taches in the week view ----------
 
-/**
- * Places the taches of the selected agenda in the day columns, in its color.
- * Nothing is shown while no agenda is selected.
- */
 function renderEvents() {
     weekColumns.querySelectorAll('.event:not(.draft)').forEach((el) => el.remove());
 
     const shown = evenements.filter((e) => selectedAgendaId !== null && e.agendaId === selectedAgendaId);
 
-    let index = 0; // staggers the entrance animation
+    let index = 0;
     for (let i = 0; i < 7; i++) {
         const dayStart = addDays(weekStart, i);
         const dayEnd = addDays(weekStart, i + 1);
 
-        // Part of each tache that falls on this day (a tache can run past midnight)
         const segments = shown
             .map((ev) => ({
                 ev,
@@ -395,12 +299,6 @@ function renderEvents() {
     }
 }
 
-/**
- * Places overlapping taches side by side: each segment gets a lane, and every segment
- * of a group of overlaps knows how many lanes the group uses.
- * Writes the result in the segments (lane, lanes).
- * @param {Array<{start: number, end: number}>} segments the taches of one day, sorted by start time
- */
 function layoutLanes(segments) {
     let group = [];
     let laneEnds = [];
@@ -424,13 +322,6 @@ function layoutLanes(segments) {
     closeGroup();
 }
 
-/**
- * Builds the card of one tache in a day column: title, time and place, in its agenda's color
- * @param {{ev: Object, start: number, end: number, lane: number, lanes: number}} segment the part of the tache on this day and its lane
- * @param {Date} dayStart midnight of the day of the column
- * @param {number} index position of the card in the week, used to stagger its entrance animation
- * @returns {HTMLButtonElement} the card to insert in the column; clicking it opens the details
- */
 function createEventBlock(segment, dayStart, index) {
     const { ev } = segment;
     const agenda = findAgenda(ev.agendaId);
@@ -473,14 +364,7 @@ function createEventBlock(segment, dayStart, index) {
     return block;
 }
 
-// ---------- Details of a tache ----------
 
-/**
- * Describes when a tache happens, e.g. "Samedi 10 octobre · 10:00 – 11:00"
- * @param {Date} start start of the tache
- * @param {Date} end end of the tache
- * @returns {string} the day and the times (both days if it runs past midnight)
- */
 function formatWhen(start, end) {
     const options = { weekday: 'long', day: 'numeric', month: 'long' };
     const startDay = capitalize(start.toLocaleDateString('fr-FR', options));
@@ -488,11 +372,6 @@ function formatWhen(start, end) {
     return startDay + ', ' + formatTime(start) + ' – ' + end.toLocaleDateString('fr-FR', options) + ', ' + formatTime(end);
 }
 
-/**
- * Opens the details of a tache (date, time, place, agenda, description) next to its card
- * @param {Object} ev the tache to show ({ title, start, end, location, description, agendaId })
- * @param {HTMLElement} card the card of the tache in the week view
- */
 function openEvent(ev, card) {
     const agenda = findAgenda(ev.agendaId);
     eventDialog.style.setProperty('--agenda-color', agenda.color);
@@ -514,53 +393,30 @@ function openEvent(ev, card) {
     placeEventDialog(card);
 }
 
-/**
- * Closes the details of the tache
- */
 function closeEvent() {
     clearActiveCard();
     eventDialog.close();
 }
 
-/**
- * Removes the highlight from the card whose details were open
- */
 function clearActiveCard() {
     if (activeCard) activeCard.classList.remove('active');
     activeCard = null;
 }
 
-/**
- * Tells whether a delete button already asks for confirmation
- * @param {HTMLButtonElement} button the delete button
- * @returns {boolean} true if the next click deletes
- */
 function isArmed(button) {
     return button.classList.contains('confirm');
 }
 
-/**
- * First click on a delete button: it asks for confirmation instead of deleting at once
- * @param {HTMLButtonElement} button the delete button
- * @param {string} label the question to show on the button
- */
 function armDelete(button, label) {
     button.classList.add('confirm');
     button.textContent = label;
 }
 
-/**
- * Puts a delete button back to its first step
- * @param {HTMLButtonElement} button the delete button
- */
 function disarmDelete(button) {
     button.classList.remove('confirm');
     button.textContent = 'Supprimer';
 }
 
-/**
- * Deletes the tache whose details are open, after a confirmation click
- */
 async function deleteShownEvent() {
     if (!isArmed(eventDeleteBtn)) {
         armDelete(eventDeleteBtn, 'Confirmer la suppression');
@@ -576,7 +432,6 @@ async function deleteShownEvent() {
     } catch (err) {
         if (err.status === 401) goToLogin();
         else {
-            // Nothing is removed from the page unless the server confirmed the deletion
             eventError.textContent = err.message || 'Suppression impossible. Réessayez.';
             eventError.hidden = false;
         }
@@ -586,21 +441,12 @@ async function deleteShownEvent() {
     }
 }
 
-/**
- * Forgets a deleted tache and redraws the sidebar counts and the week view
- * @param {string} id the id of the deleted tache
- */
 function removeEvenement(id) {
     evenements = evenements.filter((e) => e.id !== id);
     renderAgendaList();
     renderEvents();
 }
 
-/**
- * Places the details beside the card: on its right if there is room, otherwise on its left,
- * always kept inside the window. On small screens the CSS docks it at the bottom instead.
- * @param {HTMLElement} card the card of the tache in the week view
- */
 function placeEventDialog(card) {
     const gap = 12;
     const margin = 16;
@@ -617,10 +463,6 @@ function placeEventDialog(card) {
     eventDialog.dataset.side = onRight ? 'right' : 'left';
 }
 
-/**
- * Creates the red line showing the current time, to place in today's column
- * @returns {HTMLDivElement} the line
- */
 function createNowLine() {
     const line = document.createElement('div');
     line.className = 'now-line';
@@ -629,18 +471,11 @@ function createNowLine() {
     return line;
 }
 
-/**
- * Moves the current time line to the current hour and minute
- * @param {HTMLElement} line the line to move
- */
 function placeNowLine(line) {
     const now = new Date();
     line.style.top = ((now.getHours() * 60 + now.getMinutes()) / 60) * HOUR_HEIGHT + 'px';
 }
 
-/**
- * Writes the hour labels on the left of the week view (00:00 to 23:00) and the time zone
- */
 function renderHours() {
     for (let h = 0; h < 24; h++) {
         const label = document.createElement('span');
@@ -651,10 +486,6 @@ function renderHours() {
     document.getElementById('tz-label').textContent = 'GMT' + (offset >= 0 ? '+' : '−') + String(Math.abs(offset)).padStart(2, '0');
 }
 
-/**
- * Shows the week containing the date, in both the week view and the mini calendar
- * @param {Date} date any day of the week to show
- */
 function showWeekOf(date) {
     weekStart = startOfWeek(date);
     miniMonth = new Date(date.getFullYear(), date.getMonth(), 1);
@@ -662,30 +493,18 @@ function showWeekOf(date) {
     renderMini();
 }
 
-/**
- * Puts the calendar back to how the page opens: this week, scrolled a little before the current hour (never before 07:00)
- */
 function showDefaultView() {
     showWeekOf(today);
     weekBody.scrollTo({ top: Math.max(7, new Date().getHours() - 2) * HOUR_HEIGHT, behavior: 'smooth' });
 }
 
-/**
- * Moves the week view by a number of weeks
- * @param {number} delta number of weeks to move (-1 = previous, +1 = next)
- */
 function changeWeek(delta) {
     showWeekOf(addDays(weekStart, delta * 7));
 }
 
-/**
- * Starts the page: draws the calendar, loads the user, their agendas and their taches.
- * Sends the user to the login page if they are not logged in.
- */
 async function init() {
     renderHours();
     showWeekOf(today);
-    // Start the view a little before the current hour (never before 07:00)
     weekBody.scrollTop = Math.max(7, today.getHours() - 2) * HOUR_HEIGHT;
     setInterval(() => {
         const line = document.getElementById('now-line');
@@ -733,23 +552,18 @@ document.getElementById('event-edit').addEventListener('click', () => {
     openEditTache(ev);
 });
 
-// A click outside the details closes them
 eventDialog.addEventListener('click', (event) => {
     if (event.target === eventDialog) closeEvent();
 });
 
-// Escape: the dialog closes itself, the card only needs to lose its highlight
 eventDialog.addEventListener('cancel', clearActiveCard);
 eventDialog.addEventListener('close', clearActiveCard);
 
-// Clicking an empty slot of the week starts a tache on that day and half hour:
-// typed right there in the selected agenda, or in the sheet (to choose its agenda) while none is selected
 weekColumns.addEventListener('click', (event) => {
     if (event.target.closest('.event')) return;
     const column = event.target.closest('.day-column');
     if (!column) return;
 
-    // A card with a typed title is not thrown away by a click beside it
     if (draft && draft.title.value.trim()) {
         draft.title.focus();
         return;
@@ -762,13 +576,7 @@ weekColumns.addEventListener('click', (event) => {
     else openDraft(start);
 });
 
-// ---------- Tache typed straight in the week view ----------
 
-/**
- * Puts an editable card in the week view: the user types the title on the card and presses Enter.
- * The tache goes to the selected agenda (an agenda must be selected).
- * @param {Date} start day and time where the tache begins (it lasts one hour, until midnight at most)
- */
 function openDraft(start) {
     cancelDraft();
     if (start < weekStart || start >= addDays(weekStart, 7)) showWeekOf(start);
@@ -817,20 +625,16 @@ function openDraft(start) {
     title.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') cancelDraft();
     });
-    // Leaving an empty card throws it away
     block.addEventListener('focusout', (event) => {
         if (!block.contains(event.relatedTarget) && !title.value.trim()) cancelDraft();
     });
 
-    weekColumns.children[Math.round((dayStart - weekStart) / 86400000)].append(block); // round: a DST day is 23 or 25 h
+    weekColumns.children[Math.round((dayStart - weekStart) / 86400000)].append(block);
     draft = { start, end, block, title, agendaId: agenda.id };
     block.scrollIntoView({ block: 'center', behavior: 'smooth' });
     title.focus({ preventScroll: true });
 }
 
-/**
- * Removes the card being typed, if any
- */
 function cancelDraft() {
     if (!draft) return;
     const { block } = draft;
@@ -838,9 +642,6 @@ function cancelDraft() {
     block.remove();
 }
 
-/**
- * Creates the tache typed on the card, in the agenda it was started in
- */
 async function saveDraft() {
     const current = draft;
     const name = current.title.value.trim();
@@ -870,24 +671,13 @@ async function saveDraft() {
     }
 }
 
-// ---------- Creation sheet ----------
 
-/**
- * Returns the next full hour from now, e.g. 14:20 -> 15:00
- * @returns {Date} the next full hour
- */
 function nextFullHour() {
     const date = new Date();
     date.setHours(date.getHours() + 1, 0, 0, 0);
     return date;
 }
 
-/**
- * Opens the creation sheet with an empty form
- * @param {Object} [options]
- * @param {'tache'|'agenda'} [options.kind] what to create; by default a tache, or an agenda if there is none yet
- * @param {Date} [options.start] day and time to prefill for the tache; by default the next full hour
- */
 function openCreate({ kind, start } = {}) {
     editing = null;
     createForm.reset();
@@ -899,7 +689,6 @@ function openCreate({ kind, start } = {}) {
     tacheStart.value = toTimeInput(begin);
     tacheEnd.value = isSameDay(begin, end) ? toTimeInput(end) : '23:59';
 
-    // The new tache goes to the shown agenda, or to the first one
     const preset = selectedAgendaId || (agendas[0] && agendas[0].id);
     pickedAgendaIds = new Set(preset ? [preset] : []);
     renderPicker();
@@ -908,17 +697,12 @@ function openCreate({ kind, start } = {}) {
     colorCustomRadio.value = colorCustom.value;
     updateAgendaPreview();
 
-    // No agenda yet: a tache needs one, so the sheet starts on the agenda form
     setKind(agendas.length ? (kind || 'tache') : 'agenda');
     dialog.showModal();
     createBtn.setAttribute('aria-expanded', 'true');
     focusFirstField();
 }
 
-/**
- * Opens the sheet to modify a tache, its fields filled with the current values
- * @param {Object} ev the tache to modify ({ id, agendaId, title, start, end, location, description })
- */
 function openEditTache(ev) {
     editing = { kind: 'tache', item: ev };
     createForm.reset();
@@ -933,7 +717,6 @@ function openEditTache(ev) {
     tacheLocation.value = ev.location || '';
     tacheDescription.value = ev.description || '';
 
-    // A saved tache belongs to exactly one agenda
     pickedAgendaIds = new Set([ev.agendaId]);
     renderPicker();
     togglePicker(false);
@@ -943,10 +726,6 @@ function openEditTache(ev) {
     tacheTitle.focus();
 }
 
-/**
- * Opens the sheet to modify an agenda (name and color) or delete it
- * @param {Object} agenda the agenda to modify ({ id, name, color })
- */
 function openEditAgenda(agenda) {
     editing = { kind: 'agenda', item: agenda };
     createForm.reset();
@@ -957,7 +736,6 @@ function openEditAgenda(agenda) {
     if (swatch) {
         swatch.checked = true;
     } else {
-        // A color outside the palette goes in the custom swatch
         colorCustom.value = agenda.color;
         colorCustomRadio.value = agenda.color;
         colorCustomRadio.checked = true;
@@ -970,25 +748,14 @@ function openEditAgenda(agenda) {
     agendaName.focus();
 }
 
-/**
- * Closes the creation sheet
- */
 function closeCreate() {
     dialog.close();
 }
 
-/**
- * Tells what the sheet is creating
- * @returns {'tache'|'agenda'} the selected kind
- */
 function currentKind() {
     return createForm.elements.kind.value;
 }
 
-/**
- * Switches the sheet between creating a tache and creating an agenda
- * @param {'tache'|'agenda'} kind what to create
- */
 function setKind(kind) {
     createForm.elements.kind.value = kind;
     const isTache = kind === 'tache';
@@ -997,7 +764,6 @@ function setKind(kind) {
     agendaFields.hidden = isTache;
     dialogError.hidden = true;
 
-    // Modifying: a title replaces the Tâche | Agenda switch, and the item can be deleted
     kindSwitch.hidden = editing !== null;
     sheetTitle.classList.toggle('visually-hidden', editing === null);
     deleteBtn.hidden = editing === null;
@@ -1011,34 +777,21 @@ function setKind(kind) {
     }
 }
 
-/**
- * Puts the focus in the first field of the shown form (title of the tache or name of the agenda)
- */
 function focusFirstField() {
     if (currentKind() === 'agenda') agendaName.focus();
     else tacheTitle.focus();
 }
 
-/**
- * Shows an error message inside the creation sheet
- * @param {string} message the message to show
- */
 function showDialogError(message) {
     dialogError.textContent = message;
     dialogError.hidden = false;
 }
 
-/**
- * Redraws the agenda picker of the sheet: the chips and the checkbox list
- */
 function renderPicker() {
     renderPickerChips();
     renderPickerOptions();
 }
 
-/**
- * Redraws the chips of the agendas chosen for the tache (or a placeholder if none)
- */
 function renderPickerChips() {
     pickerChips.replaceChildren();
     const picked = agendas.filter((a) => pickedAgendaIds.has(a.id));
@@ -1057,9 +810,6 @@ function renderPickerChips() {
     });
 }
 
-/**
- * Redraws the checkbox list of the agenda picker, one line per agenda in its color
- */
 function renderPickerOptions() {
     pickerOptions.replaceChildren(...agendas.map((agenda) => {
         const item = document.createElement('li');
@@ -1073,7 +823,6 @@ function renderPickerOptions() {
         checkbox.checked = pickedAgendaIds.has(agenda.id);
         checkbox.addEventListener('change', () => {
             if (editing && checkbox.checked) {
-                // A saved tache moves to one agenda: ticking one unticks the others
                 pickedAgendaIds = new Set([agenda.id]);
                 pickerOptions.querySelectorAll('input').forEach((box) => { box.checked = box === checkbox; });
             } else if (checkbox.checked) pickedAgendaIds.add(agenda.id);
@@ -1092,36 +841,21 @@ function renderPickerOptions() {
     }));
 }
 
-/**
- * Tells whether the agenda picker list is open
- * @returns {boolean} true if the list is open
- */
 function isPickerOpen() {
     return pickerBtn.getAttribute('aria-expanded') === 'true';
 }
 
-/**
- * Opens or closes the agenda picker list
- * @param {boolean} open true to open the list, false to close it
- */
 function togglePicker(open) {
     pickerBtn.setAttribute('aria-expanded', String(open));
     pickerPanel.classList.toggle('open', open);
     pickerPanel.inert = !open;
 }
 
-/**
- * Updates the preview of the new agenda with the typed name and the chosen color
- */
 function updateAgendaPreview() {
     agendaPreview.style.setProperty('--agenda-color', createForm.elements.color.value);
     agendaPreviewName.textContent = agendaName.value.trim() || "Nom de l'agenda";
 }
 
-/**
- * Checks the agenda form, then creates the agenda and adds it to the sidebar, or saves the modified agenda
- * @returns {Promise<boolean>} true if the agenda was saved, false if a field is invalid
- */
 async function submitAgenda() {
     const name = agendaName.value.trim();
     if (!name) {
@@ -1135,7 +869,7 @@ async function submitAgenda() {
         const updated = await api.updateAgenda(editing.item.id, { name, color });
         agendas = agendas.map((a) => (a.id === updated.id ? updated : a));
         renderAgendaList();
-        renderEvents(); // the taches take the new color
+        renderEvents();
         return true;
     }
 
@@ -1145,12 +879,6 @@ async function submitAgenda() {
     return true;
 }
 
-/**
- * Checks the tache form and creates the tache in every chosen agenda (one copy per agenda),
- * or saves the modified tache,
- * then shows its week so the user sees it
- * @returns {Promise<boolean>} true if the tache was saved, false if a field is invalid
- */
 async function submitTache() {
     const title = tacheTitle.value.trim();
     const start = new Date(tacheDate.value + 'T' + tacheStart.value);
@@ -1191,7 +919,6 @@ async function submitTache() {
         evenements.push(...created);
     }
 
-    // Make sure the tache is visible: its week, in an agenda it was added to
     if (pickedAgendaIds.size && !pickedAgendaIds.has(selectedAgendaId)) selectedAgendaId = [...pickedAgendaIds][0];
     renderAgendaList();
     showWeekOf(start);
@@ -1199,10 +926,6 @@ async function submitTache() {
     return true;
 }
 
-/**
- * Deletes the tache or agenda being modified, after a confirmation click.
- * Deleting an agenda also deletes its taches.
- */
 async function deleteEditing() {
     const { kind, item } = editing;
     if (!isArmed(deleteBtn)) {
@@ -1253,7 +976,6 @@ pickerBtn.addEventListener('click', () => togglePicker(!isPickerOpen()));
 agendaName.addEventListener('input', updateAgendaPreview);
 agendaFields.addEventListener('change', updateAgendaPreview);
 
-// The custom swatch takes the color chosen in the native picker
 colorCustom.addEventListener('input', () => {
     colorCustomRadio.value = colorCustom.value;
     colorCustomRadio.checked = true;
@@ -1266,7 +988,6 @@ createForm.addEventListener('input', () => {
     if (editing) disarmDelete(deleteBtn);
 });
 
-// Escape closes the agenda list first, then the sheet
 dialog.addEventListener('cancel', (event) => {
     if (isPickerOpen()) {
         event.preventDefault();
@@ -1275,7 +996,6 @@ dialog.addEventListener('cancel', (event) => {
     }
 });
 
-// A click on the dimmed page around the sheet closes it
 dialog.addEventListener('click', (event) => {
     if (event.target === dialog) closeCreate();
 });

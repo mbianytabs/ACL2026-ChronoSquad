@@ -1,22 +1,16 @@
-// login.js: logic of the login page (views/login.ejs)
 
 const form = document.getElementById('login-form');
 const errorBox = document.getElementById('error');
 const submitBtn = form.querySelector('button[type="submit"]');
 
-/**
- * Shows an error message above the login form (empty fields, wrong identifiers, server down)
- * @param {string} message the message to show
- */
 function showError(message){
     errorBox.textContent = message;
     errorBox.hidden = false;
 }
 
-// Already logged in? Go straight to the home page.
 api.getMe()
     .then(() => { window.location.href = '/agendas'; })
-    .catch(() => { /* not logged in: stay here */ });
+    .catch(() => {   });
 
 form.addEventListener('input', () => { errorBox.hidden = true; });
 

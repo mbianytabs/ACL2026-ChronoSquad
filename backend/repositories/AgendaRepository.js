@@ -18,7 +18,6 @@ export class AgendaRepository {
 
     async delete(id) {
         return this.db.transaction(() => {
-            // Supprimer les événements avant leur agenda pour respecter les clés étrangères.
             this.db.run("DELETE FROM evenement WHERE agenda_id = ?", [id]);
             return this.db.run("DELETE FROM agenda WHERE id = ?", [id]).changes > 0;
         });
@@ -32,7 +31,6 @@ export class AgendaRepository {
 
     async create(agenda) {
         return this.db.transaction(() => {
-            // IDs simples ; les anciens IDs textuels restent compatibles avec le front.
             const id = agenda.id ?? String(this.db.get("SELECT COALESCE(MAX(CAST(id AS INTEGER)), 0) + 1 AS id FROM agenda").id);
             this.db.run("INSERT INTO agenda (id, name, color, owner_id, created_at) VALUES (?, ?, ?, ?, ?)",
                 [id, agenda.name, agenda.color, agenda.ownerId, agenda.createdAt.toISOString()]);

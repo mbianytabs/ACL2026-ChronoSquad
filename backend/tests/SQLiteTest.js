@@ -137,20 +137,31 @@ test("la base conserve les données après fermeture et réouverture", async () 
     }
 });
 
-test("import initial des vrais JSON, hachage et absence de réimport au redémarrage", async () => {
+test("import JSON, hachage et absence de réimport au redémarrage", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "chronosquad-json-"));
     const db = new SQLiteDatabase(":memory:");
     try {
-        const result = await initializeDatabase(db);
-        assert.deepEqual(result, { imported: true, users: 3, agendas: 3, evenements: 4 });
+        await writeFile(join(directory, "users.json"), JSON.stringify([
+            { id: "u1", username: "alice", passwordHash: "alice123", createdAt: date }
+        ]));
+        await writeFile(join(directory, "agendas.json"), JSON.stringify([
+            { id: "a1", name: "Agenda", ownerId: "u1", color: "#3b82f6", createdAt: date }
+        ]));
+        await writeFile(join(directory, "evenements.json"), JSON.stringify([makeEvent("e1")]));
+        const result = await initializeDatabase(db, directory);
+        assert.deepEqual(result, { imported: true, users: 1, agendas: 1, evenements: 1 });
         const user = await new UserRepository(db).findById(1);
         assert.equal(await user.verifyPassword("alice123"), true);
         assert.match(user.toRecord().passwordHash, /^\$argon2/);
-        assert.deepEqual((await new AgendaRepository(db).findByOwner(1)).map(a => a.id), ["agenda1", "agenda2"]);
-        assert.equal((await new EvenementRepository(db).findByAgenda("agenda1")).length, 2);
-        db.run("DELETE FROM evenement WHERE id = 'rdv1'");
-        assert.deepEqual(await initializeDatabase(db), { imported: false });
-        assert.equal(await new EvenementRepository(db).findById("rdv1"), null);
-    } finally { db.close(); }
+        assert.deepEqual((await new AgendaRepository(db).findByOwner(1)).map(a => a.id), ["a1"]);
+        assert.equal((await new EvenementRepository(db).findByAgenda("a1")).length, 1);
+        db.run("DELETE FROM evenement WHERE id = 'e1'");
+        assert.deepEqual(await initializeDatabase(db, directory), { imported: false });
+        assert.equal(await new EvenementRepository(db).findById("e1"), null);
+    } finally {
+        db.close();
+        await rm(directory, { recursive: true, force: true });
+    }
 });
 
 test("import invalide : rollback complet, JSON conservés et nouvelle tentative possible", async () => {

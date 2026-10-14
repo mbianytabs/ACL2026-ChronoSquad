@@ -1,7 +1,4 @@
-<%# Home page (route "/agendas"). Locals: user (optional, the logged-in user), error (optional).
-    The agendas and taches are loaded and drawn by agendas.js. %>
 <%
-    // Colors offered for a new agenda
     const swatches = [
         { value: '#3b82f6', name: 'Bleu' },
         { value: '#8b5cf6', name: 'Violet' },
@@ -20,7 +17,6 @@
 <header class="topbar">
     <%- include('partials/brand', { href: '/agendas' }) %>
 
-    <!-- Week navigation -->
     <div class="week-nav">
         <button id="today-btn" type="button" class="btn btn-glass">Aujourd'hui</button>
         <button id="prev-week" type="button" class="btn btn-glass btn-round" aria-label="Semaine précédente">‹</button>
@@ -35,7 +31,6 @@
 </header>
 
 <main class="home">
-    <!-- Left: create, mini calendar, list of agendas -->
     <aside class="sidebar glass">
         <div class="sidebar-scroll">
             <button id="create-btn" type="button" class="btn btn-create"
@@ -71,7 +66,6 @@
         </div>
     </aside>
 
-    <!-- Right: week view -->
     <section class="calendar glass" aria-label="Semaine">
         <p id="calendar-hint" class="calendar-hint"></p>
         <div id="week-body" class="week-body">
@@ -87,7 +81,6 @@
     </section>
 </main>
 
-<!-- Creation sheet: rises from the bottom center of the screen; also used to modify a tache or an agenda -->
 <dialog id="create-dialog" class="create-sheet" aria-labelledby="create-title">
     <form id="create-form" class="sheet-form" novalidate>
         <span class="sheet-grabber" aria-hidden="true"></span>
@@ -104,7 +97,6 @@
             <button id="close-dialog" type="button" class="btn btn-glass btn-round" aria-label="Fermer">×</button>
         </div>
 
-        <!-- Tache -->
         <fieldset id="tache-fields" class="sheet-fields">
             <legend class="visually-hidden">Nouvelle tâche</legend>
 
@@ -151,7 +143,6 @@
             </div>
         </fieldset>
 
-        <!-- Agenda -->
         <fieldset id="agenda-fields" class="sheet-fields" hidden>
             <legend class="visually-hidden">Nouvel agenda</legend>
 
@@ -187,7 +178,6 @@
     </form>
 </dialog>
 
-<!-- Details of a tache: opens beside its card in the week view -->
 <dialog id="event-dialog" class="event-pop" aria-labelledby="event-title">
     <div class="event-pop-inner">
         <div class="event-pop-head">

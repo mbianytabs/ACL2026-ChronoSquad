@@ -1,4 +1,3 @@
--- Conversion des anciens identifiants (UUID/user1/...) sans perdre les relations.
 CREATE TEMP TABLE user_id_map (old_id TEXT PRIMARY KEY, new_id INTEGER NOT NULL UNIQUE);
 INSERT INTO user_id_map (old_id, new_id)
 SELECT id, row_number() OVER (ORDER BY rowid) FROM user;

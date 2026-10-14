@@ -25,8 +25,6 @@ async function readLegacy(directory, name) {
     }
 }
 
-// Import unique : user_version=3 n'est enregistré qu'après un import réussi.
-// Les JSON originaux restent intacts mais ne sont plus utilisés ensuite.
 export async function initializeDatabase(db = getDatabase(), directory = legacyDirectory) {
     if (db.get("PRAGMA user_version").user_version >= 1) return { imported: false };
 
@@ -36,7 +34,6 @@ export async function initializeDatabase(db = getDatabase(), directory = legacyD
         readLegacy(directory, "evenements.json")
     ]);
 
-    // Le hachage asynchrone se fait avant la transaction synchrone SQLite.
     const users = [];
     for (const record of userRecords) {
         let hash = record.passwordHash;
@@ -52,7 +49,6 @@ export async function initializeDatabase(db = getDatabase(), directory = legacyD
     const evenements = evenementRecords.map(r => new Evenement(r.id, r.agendaId, r.title, r.start, r.end, r.description, r.location));
 
     return db.transaction(() => {
-        // Revérifier après les await : protège aussi contre deux initialisations simultanées.
         if (db.get("PRAGMA user_version").user_version >= 1) return { imported: false };
         const count = db.get(`SELECT (SELECT count(*) FROM user) + (SELECT count(*) FROM agenda)
             + (SELECT count(*) FROM evenement) AS total`).total;
