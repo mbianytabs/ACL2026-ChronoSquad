@@ -1,0 +1,1026 @@
+
+const userLabel = document.getElementById('current-user');
+const logoutBtn = document.getElementById('logout-btn');
+const list = document.getElementById('agenda-list');
+const lens = document.getElementById('agenda-lens');
+const calendarHint = document.getElementById('calendar-hint');
+const emptyMessage = document.getElementById('empty');
+const errorBox = document.getElementById('error');
+const createBtn = document.getElementById('create-btn');
+const weekLabel = document.getElementById('week-label');
+const miniLabel = document.getElementById('mini-label');
+const miniGrid = document.getElementById('mini-grid');
+const weekBody = document.getElementById('week-body');
+const weekDays = document.getElementById('week-days');
+const weekColumns = document.getElementById('week-columns');
+const hours = document.getElementById('hours');
+
+const dialog = document.getElementById('create-dialog');
+const createForm = document.getElementById('create-form');
+const dialogError = document.getElementById('dialog-error');
+const saveBtn = document.getElementById('save-btn');
+const deleteBtn = document.getElementById('delete-btn');
+const sheetTitle = document.getElementById('create-title');
+const kindSwitch = document.getElementById('kind-switch');
+const tacheFields = document.getElementById('tache-fields');
+const agendaFields = document.getElementById('agenda-fields');
+const tacheTitle = document.getElementById('tache-title');
+const tacheDate = document.getElementById('tache-date');
+const tacheStart = document.getElementById('tache-start');
+const tacheEnd = document.getElementById('tache-end');
+const tacheLocation = document.getElementById('tache-location');
+const tacheDescription = document.getElementById('tache-description');
+const pickerBtn = document.getElementById('picker-btn');
+const pickerPanel = document.getElementById('picker-panel');
+const pickerChips = document.getElementById('picker-chips');
+const pickerOptions = document.getElementById('picker-options');
+const agendaName = document.getElementById('agenda-name');
+const colorCustom = document.getElementById('color-custom');
+const colorCustomRadio = document.getElementById('color-custom-radio');
+const agendaPreview = document.getElementById('agenda-preview');
+const agendaPreviewName = document.getElementById('agenda-preview-name');
+
+const eventDialog = document.getElementById('event-dialog');
+const eventTitle = document.getElementById('event-title');
+const eventWhen = document.getElementById('event-when');
+const eventLocationRow = document.getElementById('event-location-row');
+const eventLocation = document.getElementById('event-location');
+const eventAgenda = document.getElementById('event-agenda');
+const eventDescription = document.getElementById('event-description');
+const eventError = document.getElementById('event-error');
+const eventDeleteBtn = document.getElementById('event-delete');
+
+const HOUR_HEIGHT = 48;
+
+const today = new Date();
+let weekStart = startOfWeek(today);
+let miniMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+let agendas = [];
+let evenements = [];
+let selectedAgendaId = null;
+let pickedAgendaIds = new Set();
+let activeCard = null;
+let shownEvent = null;
+let editing = null;
+let draft = null;
+
+function showError(message) {
+    errorBox.textContent = message;
+    errorBox.hidden = false;
+}
+
+function goToLogin() {
+    window.location.href = '/';
+}
+
+function addDays(date, days) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+}
+
+function startOfWeek(date) {
+    return addDays(date, -((date.getDay() + 6) % 7));
+}
+
+function isSameDay(a, b) {
+    return a.toDateString() === b.toDateString();
+}
+
+function capitalize(text) {
+    return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function pad(n) {
+    return String(n).padStart(2, '0');
+}
+
+function toDateInput(date) {
+    return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
+}
+
+function toTimeInput(date) {
+    return pad(date.getHours()) + ':' + pad(date.getMinutes());
+}
+
+function formatTime(date) {
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function findAgenda(id) {
+    return agendas.find((a) => a.id === id);
+}
+
+
+function createAgendaRow(agenda) {
+    const item = document.createElement('li');
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'agenda-item';
+    button.dataset.id = agenda.id;
+    button.title = 'Créé le ' + new Date(agenda.createdAt).toLocaleDateString('fr-FR');
+    button.style.setProperty('--agenda-color', agenda.color);
+    button.setAttribute('aria-pressed', String(agenda.id === selectedAgendaId));
+
+    const dot = document.createElement('span');
+    dot.className = 'agenda-dot';
+    dot.setAttribute('aria-hidden', 'true');
+
+    const name = document.createElement('span');
+    name.className = 'agenda-name';
+    name.textContent = agenda.name;
+
+    const count = evenements.filter((e) => e.agendaId === agenda.id).length;
+    const badge = document.createElement('span');
+    badge.className = 'agenda-count';
+    badge.textContent = count || '';
+    badge.setAttribute('aria-label', count + (count > 1 ? ' tâches' : ' tâche'));
+
+    button.addEventListener('click', () => {
+        if (agenda.id === selectedAgendaId) {
+            selectAgenda(null);
+            showDefaultView();
+        } else {
+            selectAgenda(agenda.id);
+        }
+    });
+
+    button.append(dot, name, badge);
+
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'agenda-edit';
+    edit.setAttribute('aria-label', 'Modifier l\'agenda ' + agenda.name);
+    edit.title = 'Modifier';
+    edit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>';
+    edit.addEventListener('click', () => openEditAgenda(agenda));
+
+    item.append(button, edit);
+    return item;
+}
+
+function renderAgendaList() {
+    list.replaceChildren(...agendas.map(createAgendaRow));
+    emptyMessage.hidden = agendas.length > 0;
+    moveLens();
+    updateCalendarHint();
+}
+
+function selectAgenda(id) {
+    cancelDraft();
+    selectedAgendaId = id;
+    list.querySelectorAll('.agenda-item').forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.dataset.id === id));
+    });
+    moveLens();
+    updateCalendarHint();
+    renderEvents();
+}
+
+function updateCalendarHint() {
+    calendarHint.textContent = agendas.length
+        ? 'Sélectionnez un agenda pour afficher ses tâches'
+        : 'Créez un agenda pour commencer';
+    const gone = selectedAgendaId !== null;
+    calendarHint.classList.toggle('gone', gone);
+    calendarHint.setAttribute('aria-hidden', String(gone));
+}
+
+function moveLens() {
+    const active = list.querySelector('.agenda-item[aria-pressed="true"]');
+    if (!active) {
+        lens.classList.remove('visible');
+        return;
+    }
+
+    const appearing = !lens.classList.contains('visible');
+    if (appearing) lens.classList.add('jump');
+
+    lens.style.setProperty('--agenda-color', active.style.getPropertyValue('--agenda-color'));
+    lens.style.height = active.offsetHeight + 'px';
+    lens.style.transform = 'translateY(' + active.offsetTop + 'px)';
+
+    if (appearing) {
+        lens.getBoundingClientRect();
+        lens.classList.remove('jump');
+    }
+    lens.classList.add('visible');
+}
+
+function renderMini() {
+    miniLabel.textContent = capitalize(miniMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }));
+
+    const start = startOfWeek(miniMonth);
+    const weekEnd = addDays(weekStart, 6);
+
+    miniGrid.replaceChildren();
+    for (let i = 0; i < 42; i++) {
+        const day = addDays(start, i);
+
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'mini-day';
+        cell.textContent = day.getDate();
+        cell.setAttribute('aria-label', day.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }));
+        if (day.getMonth() !== miniMonth.getMonth()) cell.classList.add('other-month');
+        if (day >= weekStart && day <= weekEnd) cell.classList.add('in-week');
+        if (isSameDay(day, today)) {
+            cell.classList.add('today');
+            cell.setAttribute('aria-current', 'date');
+        }
+
+        cell.addEventListener('click', () => showWeekOf(day));
+        miniGrid.append(cell);
+    }
+}
+
+function renderWeek() {
+    const weekEnd = addDays(weekStart, 6);
+    const sameMonth = weekStart.getMonth() === weekEnd.getMonth();
+    weekLabel.textContent = sameMonth
+        ? capitalize(weekStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }))
+        : capitalize(weekStart.toLocaleDateString('fr-FR', { month: 'short' })) + ' – '
+          + weekEnd.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' });
+
+    weekDays.replaceChildren();
+    weekColumns.replaceChildren();
+    draft = null;
+    for (let i = 0; i < 7; i++) {
+        const day = addDays(weekStart, i);
+        const isToday = isSameDay(day, today);
+
+        const head = document.createElement('div');
+        head.className = 'week-day' + (isToday ? ' today' : '');
+
+        const name = document.createElement('span');
+        name.className = 'week-day-name';
+        name.textContent = day.toLocaleDateString('fr-FR', { weekday: 'short' });
+
+        const number = document.createElement('span');
+        number.className = 'week-day-number';
+        number.textContent = day.getDate();
+        if (isToday) number.setAttribute('aria-current', 'date');
+
+        head.append(name, number);
+        weekDays.append(head);
+
+        const column = document.createElement('div');
+        column.className = 'day-column' + (isToday ? ' today' : '');
+        column.dataset.day = i;
+        if (isToday) column.append(createNowLine());
+        weekColumns.append(column);
+    }
+    renderEvents();
+}
+
+
+function renderEvents() {
+    weekColumns.querySelectorAll('.event:not(.draft)').forEach((el) => el.remove());
+
+    const shown = evenements.filter((e) => selectedAgendaId !== null && e.agendaId === selectedAgendaId);
+
+    let index = 0;
+    for (let i = 0; i < 7; i++) {
+        const dayStart = addDays(weekStart, i);
+        const dayEnd = addDays(weekStart, i + 1);
+
+        const segments = shown
+            .map((ev) => ({
+                ev,
+                start: Math.max(new Date(ev.start).getTime(), dayStart.getTime()),
+                end: Math.min(new Date(ev.end).getTime(), dayEnd.getTime()),
+            }))
+            .filter((s) => s.end > s.start)
+            .sort((a, b) => a.start - b.start || b.end - a.end);
+
+        layoutLanes(segments);
+        const column = weekColumns.children[i];
+        segments.forEach((segment) => column.append(createEventBlock(segment, dayStart, index++)));
+    }
+}
+
+function layoutLanes(segments) {
+    let group = [];
+    let laneEnds = [];
+    let groupEnd = 0;
+
+    const closeGroup = () => {
+        group.forEach((s) => { s.lanes = laneEnds.length; });
+        group = [];
+        laneEnds = [];
+    };
+
+    for (const s of segments) {
+        if (group.length && s.start >= groupEnd) closeGroup();
+        let lane = laneEnds.findIndex((end) => end <= s.start);
+        if (lane === -1) lane = laneEnds.length;
+        laneEnds[lane] = s.end;
+        s.lane = lane;
+        group.push(s);
+        groupEnd = group.length === 1 ? s.end : Math.max(groupEnd, s.end);
+    }
+    closeGroup();
+}
+
+function createEventBlock(segment, dayStart, index) {
+    const { ev } = segment;
+    const agenda = findAgenda(ev.agendaId);
+    const top = (segment.start - dayStart.getTime()) / 60000;
+    const minutes = (segment.end - segment.start) / 60000;
+
+    const block = document.createElement('button');
+    block.type = 'button';
+    block.className = 'event' + (minutes < 50 ? ' compact' : '');
+    block.style.setProperty('--agenda-color', agenda.color);
+    block.style.setProperty('--i', index);
+    block.style.top = (top / 60) * HOUR_HEIGHT + 'px';
+    block.style.height = Math.max((minutes / 60) * HOUR_HEIGHT, 22) + 'px';
+    block.style.left = 'calc(' + (segment.lane / segment.lanes) * 100 + '% + 3px)';
+    block.style.width = 'calc(' + 100 / segment.lanes + '% - 6px)';
+
+    const start = new Date(ev.start);
+    const end = new Date(ev.end);
+    const time = formatTime(start) + ' – ' + formatTime(end);
+    block.title = ev.title + '\n' + time + '\n' + agenda.name + (ev.location ? '\n' + ev.location : '');
+
+    const title = document.createElement('span');
+    title.className = 'event-title';
+    title.textContent = ev.title;
+
+    const when = document.createElement('span');
+    when.className = 'event-time';
+    when.textContent = time;
+
+    block.append(title, when);
+
+    if (ev.location) {
+        const where = document.createElement('span');
+        where.className = 'event-location';
+        where.textContent = ev.location;
+        block.append(where);
+    }
+
+    block.addEventListener('click', () => openEvent(ev, block));
+    return block;
+}
+
+
+function formatWhen(start, end) {
+    const options = { weekday: 'long', day: 'numeric', month: 'long' };
+    const startDay = capitalize(start.toLocaleDateString('fr-FR', options));
+    if (isSameDay(start, end)) return startDay + ' · ' + formatTime(start) + ' – ' + formatTime(end);
+    return startDay + ', ' + formatTime(start) + ' – ' + end.toLocaleDateString('fr-FR', options) + ', ' + formatTime(end);
+}
+
+function openEvent(ev, card) {
+    const agenda = findAgenda(ev.agendaId);
+    eventDialog.style.setProperty('--agenda-color', agenda.color);
+    eventTitle.textContent = ev.title;
+    eventWhen.textContent = formatWhen(new Date(ev.start), new Date(ev.end));
+    eventLocation.textContent = ev.location || '';
+    eventLocationRow.hidden = !ev.location;
+    eventAgenda.textContent = agenda.name;
+    eventDescription.textContent = ev.description || 'Aucune description';
+    eventDescription.classList.toggle('empty', !ev.description);
+    eventError.hidden = true;
+    disarmDelete(eventDeleteBtn);
+    shownEvent = ev;
+
+    clearActiveCard();
+    activeCard = card;
+    card.classList.add('active');
+    eventDialog.showModal();
+    placeEventDialog(card);
+}
+
+function closeEvent() {
+    clearActiveCard();
+    eventDialog.close();
+}
+
+function clearActiveCard() {
+    if (activeCard) activeCard.classList.remove('active');
+    activeCard = null;
+}
+
+function isArmed(button) {
+    return button.classList.contains('confirm');
+}
+
+function armDelete(button, label) {
+    button.classList.add('confirm');
+    button.textContent = label;
+}
+
+function disarmDelete(button) {
+    button.classList.remove('confirm');
+    button.textContent = 'Supprimer';
+}
+
+async function deleteShownEvent() {
+    if (!isArmed(eventDeleteBtn)) {
+        armDelete(eventDeleteBtn, 'Confirmer la suppression');
+        return;
+    }
+
+    const ev = shownEvent;
+    eventDeleteBtn.disabled = true;
+    try {
+        await api.deleteEvenement(ev.id);
+        removeEvenement(ev.id);
+        closeEvent();
+    } catch (err) {
+        if (err.status === 401) goToLogin();
+        else {
+            eventError.textContent = err.message || 'Suppression impossible. Réessayez.';
+            eventError.hidden = false;
+        }
+    } finally {
+        eventDeleteBtn.disabled = false;
+        disarmDelete(eventDeleteBtn);
+    }
+}
+
+function removeEvenement(id) {
+    evenements = evenements.filter((e) => e.id !== id);
+    renderAgendaList();
+    renderEvents();
+}
+
+function placeEventDialog(card) {
+    const gap = 12;
+    const margin = 16;
+    const rect = card.getBoundingClientRect();
+    const width = eventDialog.offsetWidth;
+    const height = eventDialog.offsetHeight;
+
+    const onRight = rect.right + gap + width <= window.innerWidth - margin;
+    const x = onRight ? rect.right + gap : Math.max(margin, rect.left - gap - width);
+    const y = Math.min(Math.max(margin, rect.top), window.innerHeight - margin - height);
+
+    eventDialog.style.setProperty('--x', x + 'px');
+    eventDialog.style.setProperty('--y', y + 'px');
+    eventDialog.dataset.side = onRight ? 'right' : 'left';
+}
+
+function createNowLine() {
+    const line = document.createElement('div');
+    line.className = 'now-line';
+    line.id = 'now-line';
+    placeNowLine(line);
+    return line;
+}
+
+function placeNowLine(line) {
+    const now = new Date();
+    line.style.top = ((now.getHours() * 60 + now.getMinutes()) / 60) * HOUR_HEIGHT + 'px';
+}
+
+function renderHours() {
+    for (let h = 0; h < 24; h++) {
+        const label = document.createElement('span');
+        label.textContent = String(h).padStart(2, '0') + ':00';
+        hours.append(label);
+    }
+    const offset = -today.getTimezoneOffset() / 60;
+    document.getElementById('tz-label').textContent = 'GMT' + (offset >= 0 ? '+' : '−') + String(Math.abs(offset)).padStart(2, '0');
+}
+
+function showWeekOf(date) {
+    weekStart = startOfWeek(date);
+    miniMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+    renderWeek();
+    renderMini();
+}
+
+function showDefaultView() {
+    showWeekOf(today);
+    weekBody.scrollTo({ top: Math.max(7, new Date().getHours() - 2) * HOUR_HEIGHT, behavior: 'smooth' });
+}
+
+function changeWeek(delta) {
+    showWeekOf(addDays(weekStart, delta * 7));
+}
+
+async function init() {
+    renderHours();
+    showWeekOf(today);
+    weekBody.scrollTop = Math.max(7, today.getHours() - 2) * HOUR_HEIGHT;
+    setInterval(() => {
+        const line = document.getElementById('now-line');
+        if (line) placeNowLine(line);
+    }, 60 * 1000);
+
+    try {
+        const user = await api.getMe();
+        userLabel.textContent = user.username;
+
+        [agendas, evenements] = await Promise.all([api.getAgendas(), api.getEvenements()]);
+        renderAgendaList();
+    } catch (err) {
+        if (err.status === 401) goToLogin();
+        else showError('Chargement impossible. Rechargez la page.');
+    }
+}
+
+logoutBtn.addEventListener('click', async () => {
+    try {
+        await api.logout();
+        goToLogin();
+    } catch (err) {
+        showError('Déconnexion impossible. Réessayez.');
+    }
+});
+
+document.getElementById('prev-week').addEventListener('click', () => changeWeek(-1));
+document.getElementById('next-week').addEventListener('click', () => changeWeek(1));
+document.getElementById('today-btn').addEventListener('click', () => showWeekOf(today));
+document.getElementById('mini-prev').addEventListener('click', () => {
+    miniMonth = new Date(miniMonth.getFullYear(), miniMonth.getMonth() - 1, 1);
+    renderMini();
+});
+document.getElementById('mini-next').addEventListener('click', () => {
+    miniMonth = new Date(miniMonth.getFullYear(), miniMonth.getMonth() + 1, 1);
+    renderMini();
+});
+
+document.getElementById('event-close').addEventListener('click', closeEvent);
+eventDeleteBtn.addEventListener('click', deleteShownEvent);
+document.getElementById('event-edit').addEventListener('click', () => {
+    const ev = shownEvent;
+    closeEvent();
+    openEditTache(ev);
+});
+
+eventDialog.addEventListener('click', (event) => {
+    if (event.target === eventDialog) closeEvent();
+});
+
+eventDialog.addEventListener('cancel', clearActiveCard);
+eventDialog.addEventListener('close', clearActiveCard);
+
+weekColumns.addEventListener('click', (event) => {
+    if (event.target.closest('.event')) return;
+    const column = event.target.closest('.day-column');
+    if (!column) return;
+
+    if (draft && draft.title.value.trim()) {
+        draft.title.focus();
+        return;
+    }
+    const y = event.clientY - column.getBoundingClientRect().top;
+    const halfHours = Math.min(47, Math.floor((y / HOUR_HEIGHT) * 2));
+    const start = addDays(weekStart, Number(column.dataset.day));
+    start.setMinutes(halfHours * 30);
+    if (selectedAgendaId === null) openCreate({ kind: 'tache', start });
+    else openDraft(start);
+});
+
+
+function openDraft(start) {
+    cancelDraft();
+    if (start < weekStart || start >= addDays(weekStart, 7)) showWeekOf(start);
+
+    const dayStart = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const end = new Date(Math.min(start.getTime() + 60 * 60 * 1000, addDays(dayStart, 1).getTime()));
+    const top = (start - dayStart) / 60000;
+    const minutes = (end - start) / 60000;
+    const agenda = findAgenda(selectedAgendaId);
+
+    const block = document.createElement('form');
+    block.className = 'event draft';
+    block.style.setProperty('--agenda-color', agenda.color);
+    block.style.top = (top / 60) * HOUR_HEIGHT + 'px';
+    block.style.height = Math.max((minutes / 60) * HOUR_HEIGHT, 44) + 'px';
+    block.style.left = '3px';
+    block.style.width = 'calc(100% - 6px)';
+
+    const title = document.createElement('input');
+    title.type = 'text';
+    title.className = 'draft-title';
+    title.placeholder = 'Titre, puis Entrée';
+    title.setAttribute('aria-label', 'Titre de la nouvelle tâche (' + agenda.name + ')');
+    title.autocomplete = 'off';
+
+    const when = document.createElement('span');
+    when.className = 'event-time';
+    when.textContent = formatTime(start) + ' – ' + formatTime(end) + ' · ' + agenda.name;
+
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'draft-more';
+    more.textContent = "Plus d'options";
+    more.addEventListener('click', () => {
+        const typed = title.value;
+        cancelDraft();
+        openCreate({ kind: 'tache', start });
+        tacheTitle.value = typed;
+    });
+
+    block.append(title, when, more);
+    block.addEventListener('submit', (event) => {
+        event.preventDefault();
+        saveDraft();
+    });
+    title.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') cancelDraft();
+    });
+    block.addEventListener('focusout', (event) => {
+        if (!block.contains(event.relatedTarget) && !title.value.trim()) cancelDraft();
+    });
+
+    weekColumns.children[Math.round((dayStart - weekStart) / 86400000)].append(block);
+    draft = { start, end, block, title, agendaId: agenda.id };
+    block.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    title.focus({ preventScroll: true });
+}
+
+function cancelDraft() {
+    if (!draft) return;
+    const { block } = draft;
+    draft = null;
+    block.remove();
+}
+
+async function saveDraft() {
+    const current = draft;
+    const name = current.title.value.trim();
+    if (!name) {
+        current.title.focus();
+        return;
+    }
+
+    current.title.disabled = true;
+    try {
+        const created = await api.createEvenement(current.agendaId, {
+            title: name,
+            start: current.start.toISOString(),
+            end: current.end.toISOString(),
+            location: '',
+            description: '',
+        });
+        evenements.push(created);
+        if (draft === current) cancelDraft();
+        renderAgendaList();
+        renderEvents();
+    } catch (err) {
+        if (err.status === 401) goToLogin();
+        else showError(err.message || 'Création impossible. Réessayez.');
+        current.title.disabled = false;
+        current.title.focus();
+    }
+}
+
+
+function nextFullHour() {
+    const date = new Date();
+    date.setHours(date.getHours() + 1, 0, 0, 0);
+    return date;
+}
+
+function openCreate({ kind, start } = {}) {
+    editing = null;
+    createForm.reset();
+    dialogError.hidden = true;
+
+    const begin = start || nextFullHour();
+    const end = new Date(begin.getTime() + 60 * 60 * 1000);
+    tacheDate.value = toDateInput(begin);
+    tacheStart.value = toTimeInput(begin);
+    tacheEnd.value = isSameDay(begin, end) ? toTimeInput(end) : '23:59';
+
+    const preset = selectedAgendaId || (agendas[0] && agendas[0].id);
+    pickedAgendaIds = new Set(preset ? [preset] : []);
+    renderPicker();
+    togglePicker(false);
+
+    colorCustomRadio.value = colorCustom.value;
+    updateAgendaPreview();
+
+    setKind(agendas.length ? (kind || 'tache') : 'agenda');
+    dialog.showModal();
+    createBtn.setAttribute('aria-expanded', 'true');
+    focusFirstField();
+}
+
+function openEditTache(ev) {
+    editing = { kind: 'tache', item: ev };
+    createForm.reset();
+    dialogError.hidden = true;
+
+    const start = new Date(ev.start);
+    const end = new Date(ev.end);
+    tacheTitle.value = ev.title;
+    tacheDate.value = toDateInput(start);
+    tacheStart.value = toTimeInput(start);
+    tacheEnd.value = isSameDay(start, end) ? toTimeInput(end) : '23:59';
+    tacheLocation.value = ev.location || '';
+    tacheDescription.value = ev.description || '';
+
+    pickedAgendaIds = new Set([ev.agendaId]);
+    renderPicker();
+    togglePicker(false);
+
+    setKind('tache');
+    dialog.showModal();
+    tacheTitle.focus();
+}
+
+function openEditAgenda(agenda) {
+    editing = { kind: 'agenda', item: agenda };
+    createForm.reset();
+    dialogError.hidden = true;
+
+    agendaName.value = agenda.name;
+    const swatch = [...createForm.elements.color].find((radio) => radio !== colorCustomRadio && radio.value === agenda.color);
+    if (swatch) {
+        swatch.checked = true;
+    } else {
+        colorCustom.value = agenda.color;
+        colorCustomRadio.value = agenda.color;
+        colorCustomRadio.checked = true;
+        colorCustomRadio.closest('.swatch').style.setProperty('--swatch', agenda.color);
+    }
+    updateAgendaPreview();
+
+    setKind('agenda');
+    dialog.showModal();
+    agendaName.focus();
+}
+
+function closeCreate() {
+    dialog.close();
+}
+
+function currentKind() {
+    return createForm.elements.kind.value;
+}
+
+function setKind(kind) {
+    createForm.elements.kind.value = kind;
+    const isTache = kind === 'tache';
+
+    tacheFields.hidden = !isTache;
+    agendaFields.hidden = isTache;
+    dialogError.hidden = true;
+
+    kindSwitch.hidden = editing !== null;
+    sheetTitle.classList.toggle('visually-hidden', editing === null);
+    deleteBtn.hidden = editing === null;
+    disarmDelete(deleteBtn);
+    if (editing) {
+        sheetTitle.textContent = isTache ? 'Modifier la tâche' : "Modifier l'agenda";
+        saveBtn.textContent = 'Enregistrer';
+    } else {
+        sheetTitle.textContent = 'Créer';
+        saveBtn.textContent = isTache ? 'Créer la tâche' : "Créer l'agenda";
+    }
+}
+
+function focusFirstField() {
+    if (currentKind() === 'agenda') agendaName.focus();
+    else tacheTitle.focus();
+}
+
+function showDialogError(message) {
+    dialogError.textContent = message;
+    dialogError.hidden = false;
+}
+
+function renderPicker() {
+    renderPickerChips();
+    renderPickerOptions();
+}
+
+function renderPickerChips() {
+    pickerChips.replaceChildren();
+    const picked = agendas.filter((a) => pickedAgendaIds.has(a.id));
+    if (picked.length === 0) {
+        const placeholder = document.createElement('span');
+        placeholder.className = 'picker-placeholder';
+        placeholder.textContent = 'Choisir un ou plusieurs agendas';
+        pickerChips.append(placeholder);
+    }
+    picked.forEach((agenda) => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.style.setProperty('--agenda-color', agenda.color);
+        chip.textContent = agenda.name;
+        pickerChips.append(chip);
+    });
+}
+
+function renderPickerOptions() {
+    pickerOptions.replaceChildren(...agendas.map((agenda) => {
+        const item = document.createElement('li');
+        const label = document.createElement('label');
+        label.className = 'picker-option';
+        label.style.setProperty('--agenda-color', agenda.color);
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = agenda.id;
+        checkbox.checked = pickedAgendaIds.has(agenda.id);
+        checkbox.addEventListener('change', () => {
+            if (editing && checkbox.checked) {
+                pickedAgendaIds = new Set([agenda.id]);
+                pickerOptions.querySelectorAll('input').forEach((box) => { box.checked = box === checkbox; });
+            } else if (checkbox.checked) pickedAgendaIds.add(agenda.id);
+            else pickedAgendaIds.delete(agenda.id);
+            renderPickerChips();
+            dialogError.hidden = true;
+        });
+
+        const name = document.createElement('span');
+        name.className = 'agenda-name';
+        name.textContent = agenda.name;
+
+        label.append(checkbox, name);
+        item.append(label);
+        return item;
+    }));
+}
+
+function isPickerOpen() {
+    return pickerBtn.getAttribute('aria-expanded') === 'true';
+}
+
+function togglePicker(open) {
+    pickerBtn.setAttribute('aria-expanded', String(open));
+    pickerPanel.classList.toggle('open', open);
+    pickerPanel.inert = !open;
+}
+
+function updateAgendaPreview() {
+    agendaPreview.style.setProperty('--agenda-color', createForm.elements.color.value);
+    agendaPreviewName.textContent = agendaName.value.trim() || "Nom de l'agenda";
+}
+
+async function submitAgenda() {
+    const name = agendaName.value.trim();
+    if (!name) {
+        showDialogError("Saisissez un nom pour l'agenda.");
+        agendaName.focus();
+        return false;
+    }
+
+    const color = createForm.elements.color.value;
+    if (editing) {
+        const updated = await api.updateAgenda(editing.item.id, { name, color });
+        agendas = agendas.map((a) => (a.id === updated.id ? updated : a));
+        renderAgendaList();
+        renderEvents();
+        return true;
+    }
+
+    const agenda = await api.createAgenda(name, color);
+    agendas.push(agenda);
+    renderAgendaList();
+    return true;
+}
+
+async function submitTache() {
+    const title = tacheTitle.value.trim();
+    const start = new Date(tacheDate.value + 'T' + tacheStart.value);
+    const end = new Date(tacheDate.value + 'T' + tacheEnd.value);
+
+    if (!title) {
+        showDialogError('Saisissez un titre pour la tâche.');
+        tacheTitle.focus();
+        return false;
+    }
+    if (isNaN(start) || isNaN(end)) {
+        showDialogError('Choisissez une date, une heure de début et une heure de fin.');
+        return false;
+    }
+    if (end <= start) {
+        showDialogError("L'heure de fin doit être après l'heure de début.");
+        tacheEnd.focus();
+        return false;
+    }
+    if (pickedAgendaIds.size === 0) {
+        showDialogError(agendas.length ? 'Choisissez au moins un agenda.' : "Créez d'abord un agenda.");
+        togglePicker(agendas.length > 0);
+        return false;
+    }
+
+    const data = {
+        title,
+        start: start.toISOString(),
+        end: end.toISOString(),
+        location: tacheLocation.value.trim(),
+        description: tacheDescription.value.trim(),
+    };
+    if (editing) {
+        const updated = await api.updateEvenement(editing.item.id, { ...data, agendaId: [...pickedAgendaIds][0] });
+        evenements = evenements.map((e) => (e.id === updated.id ? updated : e));
+    } else {
+        const created = await Promise.all([...pickedAgendaIds].map((id) => api.createEvenement(id, data)));
+        evenements.push(...created);
+    }
+
+    if (pickedAgendaIds.size && !pickedAgendaIds.has(selectedAgendaId)) selectedAgendaId = [...pickedAgendaIds][0];
+    renderAgendaList();
+    showWeekOf(start);
+    weekBody.scrollTo({ top: Math.max(0, start.getHours() - 2) * HOUR_HEIGHT, behavior: 'smooth' });
+    return true;
+}
+
+async function deleteEditing() {
+    const { kind, item } = editing;
+    if (!isArmed(deleteBtn)) {
+        const count = kind === 'agenda' ? evenements.filter((e) => e.agendaId === item.id).length : 0;
+        armDelete(deleteBtn, count
+            ? 'Supprimer avec ' + count + (count > 1 ? ' tâches ?' : ' tâche ?')
+            : 'Confirmer la suppression');
+        return;
+    }
+
+    deleteBtn.disabled = true;
+    try {
+        if (kind === 'agenda') await api.deleteAgenda(item.id);
+        else await api.deleteEvenement(item.id);
+        if (kind === 'agenda') {
+            agendas = agendas.filter((a) => a.id !== item.id);
+            evenements = evenements.filter((e) => e.agendaId !== item.id);
+            if (selectedAgendaId === item.id) selectedAgendaId = null;
+        } else {
+            evenements = evenements.filter((e) => e.id !== item.id);
+        }
+        renderAgendaList();
+        renderEvents();
+        closeCreate();
+    } catch (err) {
+        if (err.status === 401) goToLogin();
+        else showDialogError(err.message || 'Suppression impossible. Réessayez.');
+        disarmDelete(deleteBtn);
+    } finally {
+        deleteBtn.disabled = false;
+    }
+}
+
+createBtn.addEventListener('click', () => openCreate());
+deleteBtn.addEventListener('click', deleteEditing);
+document.getElementById('close-dialog').addEventListener('click', closeCreate);
+document.getElementById('cancel-btn').addEventListener('click', closeCreate);
+
+createForm.elements.kind.forEach((radio) => {
+    radio.addEventListener('change', () => {
+        setKind(radio.value);
+        togglePicker(false);
+    });
+});
+
+pickerBtn.addEventListener('click', () => togglePicker(!isPickerOpen()));
+
+agendaName.addEventListener('input', updateAgendaPreview);
+agendaFields.addEventListener('change', updateAgendaPreview);
+
+colorCustom.addEventListener('input', () => {
+    colorCustomRadio.value = colorCustom.value;
+    colorCustomRadio.checked = true;
+    colorCustomRadio.closest('.swatch').style.setProperty('--swatch', colorCustom.value);
+    updateAgendaPreview();
+});
+
+createForm.addEventListener('input', () => {
+    dialogError.hidden = true;
+    if (editing) disarmDelete(deleteBtn);
+});
+
+dialog.addEventListener('cancel', (event) => {
+    if (isPickerOpen()) {
+        event.preventDefault();
+        togglePicker(false);
+        pickerBtn.focus();
+    }
+});
+
+dialog.addEventListener('click', (event) => {
+    if (event.target === dialog) closeCreate();
+});
+
+dialog.addEventListener('close', () => {
+    createBtn.setAttribute('aria-expanded', 'false');
+});
+
+createForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    saveBtn.disabled = true;
+    try {
+        const done = currentKind() === 'agenda' ? await submitAgenda() : await submitTache();
+        if (done) closeCreate();
+    } catch (err) {
+        if (err.status === 401) goToLogin();
+        else if (err.status === 400) showDialogError(err.message || 'Vérifiez les champs puis réessayez.');
+        else if (err.status === 404) showDialogError(err.message || "Cet élément n'existe plus. Rechargez la page.");
+        else showDialogError(editing ? 'Enregistrement impossible. Réessayez.' : 'Création impossible. Réessayez.');
+    } finally {
+        saveBtn.disabled = false;
+    }
+});
+
+window.addEventListener('resize', moveLens);
+
+init();

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Test inscription et connexion</title>
+</head>
+<body>
+    <h1>Test du back : inscription et connexion</h1>
+    <p>Cette page envoie des requêtes à l'API. Aucun compte n'est créé avant soumission.</p>
+    <h2>1. Créer un compte</h2>
+    <form id="register-test">
+        <label>Nom <input name="username" required maxlength="50" autocomplete="username"></label>
+        <label>Mot de passe <input name="password" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></label>
+        <button>Inscription</button>
+    </form>
+    <h2>2. Se connecter avec ce compte</h2>
+    <form id="login-test">
+        <label>Nom <input name="username" required maxlength="50" autocomplete="username"></label>
+        <label>Mot de passe <input name="password" type="password" required maxlength="128" autocomplete="current-password"></label>
+        <button>Connexion</button>
+    </form>
+    <h2>3. Vérifier la session</h2>
+    <button id="me-test" type="button">Utilisateur connecté</button>
+    <button id="logout-test" type="button">Déconnexion</button>
+    <p>Après déconnexion, « Utilisateur connecté » doit répondre 401.</p>
+    <pre id="result" aria-live="polite">Les réponses de l'API apparaîtront ici.</pre>
+    <script>
+        async function callApi(method, url, body) {
+            const result = document.getElementById("result");
+            try {
+                const response = await fetch(url, {
+                    method,
+                    credentials: "same-origin",
+                    headers: body ? { "Content-Type": "application/json" } : {},
+                    body: body ? JSON.stringify(body) : undefined
+                });
+                const text = await response.text();
+                result.textContent = method + " " + url + " → " + response.status + "\n"
+                    + (text ? JSON.stringify(JSON.parse(text), null, 2) : "Déconnexion effectuée.");
+            } catch (error) {
+                result.textContent = "Requête impossible : " + error.message;
+            }
+        }
+        for (const [id, url] of [
+            ["register-test", "/api/users"],
+            ["login-test", "/api/auth/login"]
+        ]) {
+            document.getElementById(id).addEventListener("submit", async event => {
+                event.preventDefault();
+                const form = event.currentTarget;
+                const button = form.querySelector("button");
+                button.disabled = true;
+                try {
+                    await callApi("POST", url, {
+                        username: form.elements.username.value,
+                        password: form.elements.password.value
+                    });
+                } finally {
+                    form.elements.password.value = "";
+                    button.disabled = false;
+                }
+            });
+        }
+        document.getElementById("me-test").onclick = () => callApi("GET", "/api/users/me");
+        document.getElementById("logout-test").onclick = () => callApi("POST", "/api/auth/logout");
+    </script>
+</body>
+</html>
