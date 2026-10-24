@@ -58,8 +58,7 @@
             <section class="agenda-section">
                 <h2 class="section-title">Mes agendas</h2>
                 <div class="agenda-list-wrap">
-                    <span id="agenda-lens" class="agenda-lens" aria-hidden="true"></span>
-                    <ul id="agenda-list" class="agenda-list"></ul>
+                    <ul id="agenda-list" class="agenda-list" aria-label="Agendas affichés"></ul>
                 </div>
                 <p id="empty" class="hint" hidden>Aucun agenda pour l'instant. Appuyez sur Créer pour en ajouter un.</p>
             </section>
@@ -214,6 +213,33 @@
         <div class="event-actions">
             <button id="event-delete" type="button" class="btn btn-danger">Supprimer</button>
             <button id="event-edit" type="button" class="btn btn-glass">Modifier</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog id="share-dialog" class="event-pop share-pop" aria-labelledby="share-title">
+    <div class="event-pop-inner">
+        <div class="event-pop-head">
+            <span class="event-pop-dot" aria-hidden="true"></span>
+            <h2 id="share-title"></h2>
+            <button id="share-close" type="button" class="btn btn-glass btn-round btn-small" aria-label="Fermer">×</button>
+        </div>
+
+        <form id="share-form" class="share-form" novalidate>
+            <label for="share-username" class="visually-hidden">Nom d'utilisateur</label>
+            <input id="share-username" type="text" placeholder="Nom d'utilisateur" autocomplete="off">
+            <button id="share-add" type="submit" class="btn btn-primary">Ajouter</button>
+        </form>
+
+        <p id="share-error" class="error" role="alert" hidden></p>
+        <p id="share-status" class="share-status" role="status" hidden></p>
+
+        <h3 class="share-subtitle">Personnes ayant accès</h3>
+        <ul id="share-list" class="share-list" aria-label="Personnes ayant accès"></ul>
+        <p id="share-empty" class="share-empty"></p>
+
+        <div class="event-actions">
+            <button id="share-remove" type="button" class="btn btn-danger" data-label="Retirer" disabled>Retirer</button>
         </div>
     </div>
 </dialog>

@@ -57,6 +57,14 @@ const api = {
 
     deleteAgenda: (id) => request('DELETE', '/api/agendas/' + encodeURIComponent(id)),
 
+    getPartages: (agendaId) => request('GET', '/api/agendas/' + encodeURIComponent(agendaId) + '/partages'),
+
+    addPartage: (agendaId, username) =>
+        request('POST', '/api/agendas/' + encodeURIComponent(agendaId) + '/partages', { username }),
+
+    removePartage: (agendaId, username) =>
+        request('DELETE', '/api/agendas/' + encodeURIComponent(agendaId) + '/partages/' + encodeURIComponent(username)),
+
     getEvenements: () => request('GET', '/api/evenements'),
 
     createEvenement: (agendaId, data) =>

@@ -2,7 +2,6 @@
 const userLabel = document.getElementById('current-user');
 const logoutBtn = document.getElementById('logout-btn');
 const list = document.getElementById('agenda-list');
-const lens = document.getElementById('agenda-lens');
 const calendarHint = document.getElementById('calendar-hint');
 const emptyMessage = document.getElementById('empty');
 const errorBox = document.getElementById('error');
@@ -50,20 +49,34 @@ const eventDescription = document.getElementById('event-description');
 const eventError = document.getElementById('event-error');
 const eventDeleteBtn = document.getElementById('event-delete');
 
+const shareDialog = document.getElementById('share-dialog');
+const shareTitle = document.getElementById('share-title');
+const shareForm = document.getElementById('share-form');
+const shareUsername = document.getElementById('share-username');
+const shareAddBtn = document.getElementById('share-add');
+const shareError = document.getElementById('share-error');
+const shareStatus = document.getElementById('share-status');
+const shareList = document.getElementById('share-list');
+const shareEmpty = document.getElementById('share-empty');
+const shareRemoveBtn = document.getElementById('share-remove');
+
 const HOUR_HEIGHT = 48;
 
 const today = new Date();
 let weekStart = startOfWeek(today);
 let miniMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
+let currentUser = null;
 let agendas = [];
 let evenements = [];
-let selectedAgendaId = null;
+let selectedAgendaIds = new Set();
 let pickedAgendaIds = new Set();
 let activeCard = null;
 let shownEvent = null;
 let editing = null;
 let draft = null;
+let sharingAgenda = null;
+let partages = [];
 
 function showError(message) {
     errorBox.textContent = message;
@@ -110,21 +123,53 @@ function findAgenda(id) {
     return agendas.find((a) => a.id === id);
 }
 
+function isOwnAgenda(agenda) {
+    return !currentUser || agenda.ownerId === undefined || agenda.ownerId === currentUser.id;
+}
+
+function isSharedAgenda(agenda) {
+    return !isOwnAgenda(agenda) || (agenda.sharedWith || []).length > 0;
+}
+
+function pluralize(count, word) {
+    return count + ' ' + word + (count > 1 ? 's' : '');
+}
+
 
 function createAgendaRow(agenda) {
     const item = document.createElement('li');
 
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'agenda-item';
-    button.dataset.id = agenda.id;
-    button.title = 'Créé le ' + new Date(agenda.createdAt).toLocaleDateString('fr-FR');
-    button.style.setProperty('--agenda-color', agenda.color);
-    button.setAttribute('aria-pressed', String(agenda.id === selectedAgendaId));
+    const row = document.createElement('label');
+    row.className = 'agenda-item';
+    row.title = 'Créé le ' + new Date(agenda.createdAt).toLocaleDateString('fr-FR');
+    row.style.setProperty('--agenda-color', agenda.color);
 
-    const dot = document.createElement('span');
-    dot.className = 'agenda-dot';
-    dot.setAttribute('aria-hidden', 'true');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'agenda-check visually-hidden';
+    checkbox.value = agenda.id;
+    checkbox.checked = selectedAgendaIds.has(agenda.id);
+    checkbox.addEventListener('change', () => toggleAgenda(agenda.id, checkbox.checked));
+
+    const box = document.createElement('span');
+    box.className = 'agenda-box';
+    box.setAttribute('aria-hidden', 'true');
+    box.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+    row.append(checkbox, box);
+
+    if (isSharedAgenda(agenda)) {
+        const label = isOwnAgenda(agenda)
+            ? 'Partagé avec ' + pluralize(agenda.sharedWith.length, 'personne')
+            : 'Partagé par ' + (agenda.ownerName || 'un autre utilisateur');
+        const shared = document.createElement('span');
+        shared.className = 'agenda-shared';
+        shared.title = label;
+        shared.setAttribute('role', 'img');
+        shared.setAttribute('aria-label', label);
+        shared.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M15.5 4.9a3.2 3.2 0 0 1 0 6.2"/><path d="M17.5 13.8c2.1.6 3.5 2.6 3.5 5.2"/></svg>';
+        row.append(shared);
+    }
 
     const name = document.createElement('span');
     name.className = 'agenda-name';
@@ -136,16 +181,9 @@ function createAgendaRow(agenda) {
     badge.textContent = count || '';
     badge.setAttribute('aria-label', count + (count > 1 ? ' tâches' : ' tâche'));
 
-    button.addEventListener('click', () => {
-        if (agenda.id === selectedAgendaId) {
-            selectAgenda(null);
-            showDefaultView();
-        } else {
-            selectAgenda(agenda.id);
-        }
-    });
-
-    button.append(dot, name, badge);
+    row.append(name, badge);
+    item.append(row);
+    if (!isOwnAgenda(agenda)) return item;
 
     const edit = document.createElement('button');
     edit.type = 'button';
@@ -155,56 +193,40 @@ function createAgendaRow(agenda) {
     edit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>';
     edit.addEventListener('click', () => openEditAgenda(agenda));
 
-    item.append(button, edit);
+    const share = document.createElement('button');
+    share.type = 'button';
+    share.className = 'agenda-edit agenda-share';
+    share.setAttribute('aria-label', 'Partager l\'agenda ' + agenda.name);
+    share.setAttribute('aria-haspopup', 'dialog');
+    share.title = 'Partager';
+    share.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20c0-3.6 2.9-6 6.5-6 1.5 0 2.9.4 4 1.2"/><path d="M18 14v6M15 17h6"/></svg>';
+    share.addEventListener('click', () => openShare(agenda, share));
+
+    item.append(edit, share);
     return item;
 }
 
 function renderAgendaList() {
     list.replaceChildren(...agendas.map(createAgendaRow));
     emptyMessage.hidden = agendas.length > 0;
-    moveLens();
     updateCalendarHint();
 }
 
-function selectAgenda(id) {
+function toggleAgenda(id, checked) {
     cancelDraft();
-    selectedAgendaId = id;
-    list.querySelectorAll('.agenda-item').forEach((button) => {
-        button.setAttribute('aria-pressed', String(button.dataset.id === id));
-    });
-    moveLens();
+    if (checked) selectedAgendaIds.add(id);
+    else selectedAgendaIds.delete(id);
     updateCalendarHint();
     renderEvents();
 }
 
 function updateCalendarHint() {
     calendarHint.textContent = agendas.length
-        ? 'Sélectionnez un agenda pour afficher ses tâches'
+        ? 'Cochez un ou plusieurs agendas pour afficher leurs tâches'
         : 'Créez un agenda pour commencer';
-    const gone = selectedAgendaId !== null;
+    const gone = selectedAgendaIds.size > 0;
     calendarHint.classList.toggle('gone', gone);
     calendarHint.setAttribute('aria-hidden', String(gone));
-}
-
-function moveLens() {
-    const active = list.querySelector('.agenda-item[aria-pressed="true"]');
-    if (!active) {
-        lens.classList.remove('visible');
-        return;
-    }
-
-    const appearing = !lens.classList.contains('visible');
-    if (appearing) lens.classList.add('jump');
-
-    lens.style.setProperty('--agenda-color', active.style.getPropertyValue('--agenda-color'));
-    lens.style.height = active.offsetHeight + 'px';
-    lens.style.transform = 'translateY(' + active.offsetTop + 'px)';
-
-    if (appearing) {
-        lens.getBoundingClientRect();
-        lens.classList.remove('jump');
-    }
-    lens.classList.add('visible');
 }
 
 function renderMini() {
@@ -277,7 +299,7 @@ function renderWeek() {
 function renderEvents() {
     weekColumns.querySelectorAll('.event:not(.draft)').forEach((el) => el.remove());
 
-    const shown = evenements.filter((e) => selectedAgendaId !== null && e.agendaId === selectedAgendaId);
+    const shown = evenements.filter((e) => selectedAgendaIds.has(e.agendaId));
 
     let index = 0;
     for (let i = 0; i < 7; i++) {
@@ -390,7 +412,7 @@ function openEvent(ev, card) {
     activeCard = card;
     card.classList.add('active');
     eventDialog.showModal();
-    placeEventDialog(card);
+    placePopover(eventDialog, card);
 }
 
 function closeEvent() {
@@ -414,7 +436,7 @@ function armDelete(button, label) {
 
 function disarmDelete(button) {
     button.classList.remove('confirm');
-    button.textContent = 'Supprimer';
+    button.textContent = button.dataset.label || 'Supprimer';
 }
 
 async function deleteShownEvent() {
@@ -447,20 +469,20 @@ function removeEvenement(id) {
     renderEvents();
 }
 
-function placeEventDialog(card) {
+function placePopover(popover, anchor) {
     const gap = 12;
     const margin = 16;
-    const rect = card.getBoundingClientRect();
-    const width = eventDialog.offsetWidth;
-    const height = eventDialog.offsetHeight;
+    const rect = anchor.getBoundingClientRect();
+    const width = popover.offsetWidth;
+    const height = popover.offsetHeight;
 
     const onRight = rect.right + gap + width <= window.innerWidth - margin;
     const x = onRight ? rect.right + gap : Math.max(margin, rect.left - gap - width);
     const y = Math.min(Math.max(margin, rect.top), window.innerHeight - margin - height);
 
-    eventDialog.style.setProperty('--x', x + 'px');
-    eventDialog.style.setProperty('--y', y + 'px');
-    eventDialog.dataset.side = onRight ? 'right' : 'left';
+    popover.style.setProperty('--x', x + 'px');
+    popover.style.setProperty('--y', y + 'px');
+    popover.dataset.side = onRight ? 'right' : 'left';
 }
 
 function createNowLine() {
@@ -493,11 +515,6 @@ function showWeekOf(date) {
     renderMini();
 }
 
-function showDefaultView() {
-    showWeekOf(today);
-    weekBody.scrollTo({ top: Math.max(7, new Date().getHours() - 2) * HOUR_HEIGHT, behavior: 'smooth' });
-}
-
 function changeWeek(delta) {
     showWeekOf(addDays(weekStart, delta * 7));
 }
@@ -512,8 +529,8 @@ async function init() {
     }, 60 * 1000);
 
     try {
-        const user = await api.getMe();
-        userLabel.textContent = user.username;
+        currentUser = await api.getMe();
+        userLabel.textContent = currentUser.username;
 
         [agendas, evenements] = await Promise.all([api.getAgendas(), api.getEvenements()]);
         renderAgendaList();
@@ -572,8 +589,8 @@ weekColumns.addEventListener('click', (event) => {
     const halfHours = Math.min(47, Math.floor((y / HOUR_HEIGHT) * 2));
     const start = addDays(weekStart, Number(column.dataset.day));
     start.setMinutes(halfHours * 30);
-    if (selectedAgendaId === null) openCreate({ kind: 'tache', start });
-    else openDraft(start);
+    if (selectedAgendaIds.size === 1) openDraft(start);
+    else openCreate({ kind: 'tache', start });
 });
 
 
@@ -585,7 +602,7 @@ function openDraft(start) {
     const end = new Date(Math.min(start.getTime() + 60 * 60 * 1000, addDays(dayStart, 1).getTime()));
     const top = (start - dayStart) / 60000;
     const minutes = (end - start) / 60000;
-    const agenda = findAgenda(selectedAgendaId);
+    const agenda = findAgenda([...selectedAgendaIds][0]);
 
     const block = document.createElement('form');
     block.className = 'event draft';
@@ -689,8 +706,8 @@ function openCreate({ kind, start } = {}) {
     tacheStart.value = toTimeInput(begin);
     tacheEnd.value = isSameDay(begin, end) ? toTimeInput(end) : '23:59';
 
-    const preset = selectedAgendaId || (agendas[0] && agendas[0].id);
-    pickedAgendaIds = new Set(preset ? [preset] : []);
+    const preset = selectedAgendaIds.size ? [...selectedAgendaIds] : agendas.slice(0, 1).map((a) => a.id);
+    pickedAgendaIds = new Set(preset);
     renderPicker();
     togglePicker(false);
 
@@ -919,7 +936,7 @@ async function submitTache() {
         evenements.push(...created);
     }
 
-    if (pickedAgendaIds.size && !pickedAgendaIds.has(selectedAgendaId)) selectedAgendaId = [...pickedAgendaIds][0];
+    pickedAgendaIds.forEach((id) => selectedAgendaIds.add(id));
     renderAgendaList();
     showWeekOf(start);
     weekBody.scrollTo({ top: Math.max(0, start.getHours() - 2) * HOUR_HEIGHT, behavior: 'smooth' });
@@ -943,7 +960,7 @@ async function deleteEditing() {
         if (kind === 'agenda') {
             agendas = agendas.filter((a) => a.id !== item.id);
             evenements = evenements.filter((e) => e.agendaId !== item.id);
-            if (selectedAgendaId === item.id) selectedAgendaId = null;
+            selectedAgendaIds.delete(item.id);
         } else {
             evenements = evenements.filter((e) => e.id !== item.id);
         }
@@ -1021,6 +1038,181 @@ createForm.addEventListener('submit', async (event) => {
     }
 });
 
-window.addEventListener('resize', moveLens);
+
+function openShare(agenda, anchor) {
+    sharingAgenda = agenda;
+    partages = [];
+    shareDialog.style.setProperty('--agenda-color', agenda.color);
+    shareTitle.textContent = 'Partager « ' + agenda.name + ' »';
+    shareForm.reset();
+    shareError.hidden = true;
+    shareStatus.hidden = true;
+    renderPartages('Chargement…');
+
+    shareDialog.showModal();
+    placePopover(shareDialog, anchor);
+    shareUsername.focus();
+    loadPartages(agenda);
+}
+
+async function loadPartages(agenda) {
+    try {
+        const loaded = await api.getPartages(agenda.id);
+        if (sharingAgenda !== agenda) return;
+        partages = loaded || [];
+        syncSharedWith();
+        renderPartages();
+    } catch (err) {
+        if (err.status === 401) goToLogin();
+        else if (sharingAgenda === agenda) {
+            renderPartages('');
+            showShareError(err.message || 'Chargement des partages impossible.');
+        }
+    }
+}
+
+function closeShare() {
+    shareDialog.close();
+}
+
+function showShareError(message) {
+    shareStatus.hidden = true;
+    shareError.textContent = message;
+    shareError.hidden = false;
+}
+
+function showShareStatus(message) {
+    shareError.hidden = true;
+    shareStatus.textContent = message;
+    shareStatus.hidden = false;
+}
+
+function syncSharedWith() {
+    sharingAgenda.sharedWith = partages.map((p) => p.username);
+    renderAgendaList();
+}
+
+function renderPartages(emptyText) {
+    shareList.replaceChildren(...partages.map((partage) => {
+        const item = document.createElement('li');
+        const label = document.createElement('label');
+        label.className = 'share-person';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'share-check visually-hidden';
+        checkbox.value = partage.username;
+        checkbox.addEventListener('change', updateRemoveBtn);
+
+        const box = document.createElement('span');
+        box.className = 'agenda-box';
+        box.setAttribute('aria-hidden', 'true');
+        box.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+        const avatar = document.createElement('span');
+        avatar.className = 'share-avatar';
+        avatar.setAttribute('aria-hidden', 'true');
+        avatar.textContent = partage.username.charAt(0).toUpperCase();
+
+        const name = document.createElement('span');
+        name.className = 'share-name';
+        name.textContent = partage.username;
+
+        label.append(checkbox, box, avatar, name);
+        item.append(label);
+        return item;
+    }));
+
+    shareEmpty.textContent = emptyText ?? "Cet agenda n'est partagé avec personne.";
+    shareEmpty.hidden = partages.length > 0 || !shareEmpty.textContent;
+    updateRemoveBtn();
+}
+
+function selectedPartages() {
+    return [...shareList.querySelectorAll('.share-check:checked')].map((box) => box.value);
+}
+
+function updateRemoveBtn() {
+    const count = selectedPartages().length;
+    shareRemoveBtn.dataset.label = count ? 'Retirer (' + count + ')' : 'Retirer';
+    shareRemoveBtn.disabled = count === 0;
+    disarmDelete(shareRemoveBtn);
+}
+
+async function addPartage() {
+    const agenda = sharingAgenda;
+    const username = shareUsername.value.trim();
+    if (!username) {
+        showShareError("Saisissez le nom d'un utilisateur.");
+        shareUsername.focus();
+        return;
+    }
+    if (currentUser && username === currentUser.username) {
+        showShareError('Vous êtes le propriétaire de cet agenda.');
+        return;
+    }
+    if (partages.some((p) => p.username === username)) {
+        showShareError(username + ' a déjà accès à cet agenda.');
+        return;
+    }
+
+    shareAddBtn.disabled = true;
+    try {
+        const created = await api.addPartage(agenda.id, username);
+        if (sharingAgenda !== agenda) return;
+        partages.push(created || { username });
+        syncSharedWith();
+        renderPartages();
+        shareUsername.value = '';
+        showShareStatus(username + ' a maintenant accès à cet agenda.');
+    } catch (err) {
+        if (err.status === 401) goToLogin();
+        else if (err.status === 404) showShareError('Aucun utilisateur nommé « ' + username + ' ».');
+        else if (err.status === 409) showShareError(username + ' a déjà accès à cet agenda.');
+        else showShareError(err.message || 'Partage impossible. Réessayez.');
+    } finally {
+        shareAddBtn.disabled = false;
+        shareUsername.focus();
+    }
+}
+
+async function removePartages() {
+    const usernames = selectedPartages();
+    if (!isArmed(shareRemoveBtn)) {
+        armDelete(shareRemoveBtn, 'Retirer l\'accès à ' + pluralize(usernames.length, 'personne') + ' ?');
+        return;
+    }
+
+    const agenda = sharingAgenda;
+    shareRemoveBtn.disabled = true;
+    const results = await Promise.allSettled(usernames.map((username) => api.removePartage(agenda.id, username)));
+    if (sharingAgenda !== agenda) return;
+
+    const removed = usernames.filter((_, i) => results[i].status === 'fulfilled');
+    const failed = results.find((r) => r.status === 'rejected');
+    partages = partages.filter((p) => !removed.includes(p.username));
+    syncSharedWith();
+    renderPartages();
+
+    if (failed && failed.reason.status === 401) goToLogin();
+    else if (failed) showShareError(failed.reason.message || 'Retrait impossible. Réessayez.');
+    else showShareStatus('Accès retiré pour ' + removed.join(', ') + '.');
+}
+
+shareForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    addPartage();
+});
+shareUsername.addEventListener('input', () => {
+    shareError.hidden = true;
+});
+shareRemoveBtn.addEventListener('click', removePartages);
+document.getElementById('share-close').addEventListener('click', closeShare);
+shareDialog.addEventListener('click', (event) => {
+    if (event.target === shareDialog) closeShare();
+});
+shareDialog.addEventListener('close', () => {
+    sharingAgenda = null;
+});
 
 init();
