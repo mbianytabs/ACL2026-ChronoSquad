@@ -1,4 +1,3 @@
-
 const userLabel = document.getElementById('current-user');
 const logoutBtn = document.getElementById('logout-btn');
 const list = document.getElementById('agenda-list');
@@ -27,6 +26,7 @@ const tacheTitle = document.getElementById('tache-title');
 const tacheDate = document.getElementById('tache-date');
 const tacheStart = document.getElementById('tache-start');
 const tacheEnd = document.getElementById('tache-end');
+const tacheRecurrence = document.getElementById('tache-recurrence');
 const tacheLocation = document.getElementById('tache-location');
 const tacheDescription = document.getElementById('tache-description');
 const pickerBtn = document.getElementById('picker-btn');
@@ -675,6 +675,7 @@ async function saveDraft() {
             end: current.end.toISOString(),
             location: '',
             description: '',
+            recurrence: 'none',
         });
         evenements.push(created);
         if (draft === current) cancelDraft();
@@ -731,6 +732,7 @@ function openEditTache(ev) {
     tacheDate.value = toDateInput(start);
     tacheStart.value = toTimeInput(start);
     tacheEnd.value = isSameDay(start, end) ? toTimeInput(end) : '23:59';
+    tacheRecurrence.value = ev.recurrence || 'none';
     tacheLocation.value = ev.location || '';
     tacheDescription.value = ev.description || '';
 
@@ -927,6 +929,7 @@ async function submitTache() {
         end: end.toISOString(),
         location: tacheLocation.value.trim(),
         description: tacheDescription.value.trim(),
+        recurrence: tacheRecurrence.value,
     };
     if (editing) {
         const updated = await api.updateEvenement(editing.item.id, { ...data, agendaId: [...pickedAgendaIds][0] });
@@ -1203,14 +1206,19 @@ shareForm.addEventListener('submit', (event) => {
     event.preventDefault();
     addPartage();
 });
+
 shareUsername.addEventListener('input', () => {
     shareError.hidden = true;
 });
+
 shareRemoveBtn.addEventListener('click', removePartages);
+
 document.getElementById('share-close').addEventListener('click', closeShare);
+
 shareDialog.addEventListener('click', (event) => {
     if (event.target === shareDialog) closeShare();
 });
+
 shareDialog.addEventListener('close', () => {
     sharingAgenda = null;
 });
