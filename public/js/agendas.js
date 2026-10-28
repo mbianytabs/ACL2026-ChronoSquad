@@ -62,6 +62,20 @@ const shareList = document.getElementById('share-list');
 const shareEmpty = document.getElementById('share-empty');
 const shareRemoveBtn = document.getElementById('share-remove');
 
+const searchInput = document.getElementById('search-input');
+const searchFilterBtn = document.getElementById('search-filter-btn');
+const searchFilters = document.getElementById('search-filters');
+const searchTitle = document.getElementById('search-title');
+const searchDate = document.getElementById('search-date');
+const searchAgenda = document.getElementById('search-agenda');
+const searchLocation = document.getElementById('search-location');
+const searchResetBtn = document.getElementById('search-reset-btn');
+const searchSubmitBtn = document.getElementById('search-submit-btn');
+const searchResults = document.getElementById('search-results');
+const searchResultsCount = document.getElementById('search-results-count');
+const searchResultsList = document.getElementById('search-results-list');
+const searchEmpty = document.getElementById('search-empty');
+
 const HOUR_HEIGHT = 48;
 
 const today = new Date();
@@ -173,6 +187,325 @@ function pluralize(count, word) {
         + word
         + (count > 1 ? 's' : '')
     );
+}
+
+
+/* =========================================================
+   RECHERCHE DE RENDEZ-VOUS
+   ========================================================= */
+
+function normalizeSearchText(value) {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
+function getSearchEventKey(ev) {
+    return String(ev.recurringEventId || ev.id)
+        + '|'
+        + new Date(ev.start).toISOString();
+}
+
+function syncSearchAgendaOptions() {
+    if (!searchAgenda) return;
+
+    const previousValue = searchAgenda.value;
+
+    searchAgenda.replaceChildren();
+
+    const allOption = document.createElement('option');
+    allOption.value = '';
+    allOption.textContent = 'Tous les agendas';
+    searchAgenda.append(allOption);
+
+    agendas.forEach((agenda) => {
+        const option = document.createElement('option');
+        option.value = String(agenda.id);
+        option.textContent = agenda.name;
+        searchAgenda.append(option);
+    });
+
+    if (
+        [...searchAgenda.options].some(
+            (option) => option.value === previousValue
+        )
+    ) {
+        searchAgenda.value = previousValue;
+    }
+}
+
+function toggleSearchFilters(forceOpen) {
+    if (!searchFilters || !searchFilterBtn) return;
+
+    const shouldOpen =
+        forceOpen !== undefined
+            ? forceOpen
+            : searchFilters.hidden;
+
+    searchFilters.hidden = !shouldOpen;
+
+    searchFilterBtn.setAttribute(
+        'aria-expanded',
+        String(shouldOpen)
+    );
+}
+
+function getSearchCriteria() {
+    return {
+        query: normalizeSearchText(searchInput?.value),
+        title: normalizeSearchText(searchTitle?.value),
+        date: searchDate?.value || '',
+        agendaId: searchAgenda?.value || '',
+        location: normalizeSearchText(searchLocation?.value),
+    };
+}
+
+function hasSearchCriteria(criteria) {
+    return Boolean(
+        criteria.query
+        || criteria.title
+        || criteria.date
+        || criteria.agendaId
+        || criteria.location
+    );
+}
+
+function eventMatchesSearch(ev, criteria) {
+    const agenda = findAgenda(ev.agendaId);
+
+    const title = normalizeSearchText(ev.title);
+    const location = normalizeSearchText(ev.location);
+    const description = normalizeSearchText(ev.description);
+    const agendaName = normalizeSearchText(agenda?.name);
+
+    if (criteria.query) {
+        const quickMatch =
+            title.includes(criteria.query)
+            || location.includes(criteria.query)
+            || description.includes(criteria.query)
+            || agendaName.includes(criteria.query);
+
+        if (!quickMatch) return false;
+    }
+
+    if (
+        criteria.title
+        && !title.includes(criteria.title)
+    ) {
+        return false;
+    }
+
+    if (
+        criteria.location
+        && !location.includes(criteria.location)
+    ) {
+        return false;
+    }
+
+    if (
+        criteria.agendaId
+        && String(ev.agendaId) !== criteria.agendaId
+    ) {
+        return false;
+    }
+
+    if (
+        criteria.date
+        && toDateInput(new Date(ev.start)) !== criteria.date
+    ) {
+        return false;
+    }
+
+    return true;
+}
+
+function formatSearchResultDate(ev) {
+    const start = new Date(ev.start);
+    const end = new Date(ev.end);
+
+    return (
+        capitalize(
+            start.toLocaleDateString(
+                'fr-FR',
+                {
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                }
+            )
+        )
+        + ' · '
+        + formatTime(start)
+        + ' – '
+        + formatTime(end)
+    );
+}
+
+function openSearchResult(ev) {
+    const start = new Date(ev.start);
+
+    selectedAgendaIds.add(ev.agendaId);
+
+    showWeekOf(start);
+    renderAgendaList();
+    renderEvents();
+
+    const key = getSearchEventKey(ev);
+
+    requestAnimationFrame(() => {
+        const card = [
+            ...weekColumns.querySelectorAll(
+                '.event:not(.draft)'
+            )
+        ].find(
+            (element) =>
+                element.dataset.searchEventKey === key
+        );
+
+        if (card) {
+            card.scrollIntoView({
+                block: 'center',
+                behavior: 'smooth'
+            });
+
+            card.click();
+        }
+    });
+
+    if (searchResults) {
+        searchResults.hidden = true;
+    }
+}
+
+function renderSearchResults(matches) {
+    if (
+        !searchResults
+        || !searchResultsList
+        || !searchResultsCount
+        || !searchEmpty
+    ) {
+        return;
+    }
+
+    searchResults.hidden = false;
+    searchResultsList.replaceChildren();
+
+    searchResultsCount.textContent =
+        matches.length === 1
+            ? '1 rendez-vous trouvé'
+            : matches.length + ' rendez-vous trouvés';
+
+    searchEmpty.hidden = matches.length !== 0;
+
+    matches.forEach((ev) => {
+        const agenda = findAgenda(ev.agendaId);
+
+        const item = document.createElement('li');
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'search-result-item';
+
+        const title = document.createElement('strong');
+        title.className = 'search-result-title';
+        title.textContent = ev.title || 'Sans titre';
+
+        const when = document.createElement('span');
+        when.className = 'search-result-when';
+        when.textContent = formatSearchResultDate(ev);
+
+        const meta = document.createElement('span');
+        meta.className = 'search-result-meta';
+
+        const details = [];
+
+        if (agenda?.name) {
+            details.push('Agenda : ' + agenda.name);
+        }
+
+        if (ev.location) {
+            details.push('Lieu : ' + ev.location);
+        }
+
+        meta.textContent = details.join(' · ');
+
+        button.append(title, when);
+
+        if (meta.textContent) {
+            button.append(meta);
+        }
+
+        button.addEventListener(
+            'click',
+            () => openSearchResult(ev)
+        );
+
+        item.append(button);
+        searchResultsList.append(item);
+    });
+}
+
+function performSearch() {
+    const criteria = getSearchCriteria();
+
+    if (!hasSearchCriteria(criteria)) {
+        if (searchResults) {
+            searchResults.hidden = true;
+        }
+
+        return;
+    }
+
+    const matches =
+        calendarEvenements
+            .filter(
+                (ev) =>
+                    eventMatchesSearch(
+                        ev,
+                        criteria
+                    )
+            )
+            .sort(
+                (a, b) =>
+                    new Date(a.start)
+                    -
+                    new Date(b.start)
+            );
+
+    
+    toggleSearchFilters(false);
+
+    
+    renderSearchResults(matches);
+}
+
+function resetSearch() {
+    if (searchInput) searchInput.value = '';
+    if (searchTitle) searchTitle.value = '';
+    if (searchDate) searchDate.value = '';
+    if (searchAgenda) searchAgenda.value = '';
+    if (searchLocation) searchLocation.value = '';
+
+    if (searchResults) {
+        searchResults.hidden = true;
+    }
+
+    if (searchResultsList) {
+        searchResultsList.replaceChildren();
+    }
+
+    if (searchResultsCount) {
+        searchResultsCount.textContent = '';
+    }
+
+    if (searchEmpty) {
+        searchEmpty.hidden = true;
+    }
+
+    searchInput?.focus();
 }
 
 function createAgendaRow(agenda) {
@@ -566,7 +899,6 @@ function renderMini() {
         );
     }
 }
-
 function renderWeek() {
     const weekEnd =
         addDays(
@@ -1008,6 +1340,9 @@ function createEventBlock(
                 ? ' compact'
                 : ''
         );
+
+    block.dataset.searchEventKey =
+        getSearchEventKey(ev);
 
     block.style.setProperty(
         '--agenda-color',
@@ -1575,7 +1910,6 @@ function renderHours() {
                     '0'
                 );
 }
-
 function showWeekOf(date) {
     weekStart =
         startOfWeek(
@@ -1653,6 +1987,8 @@ async function init() {
             ]);
 
         await refreshCalendarEvenements();
+
+        syncSearchAgendaOptions();
 
         renderAgendaList();
 
@@ -2390,7 +2726,6 @@ function openCreate({
 
     focusFirstField();
 }
-
 function openEditTache(ev) {
     editing = {
         kind:
@@ -2869,6 +3204,8 @@ async function submitAgenda() {
                         : a
             );
 
+        syncSearchAgendaOptions();
+
         renderAgendaList();
 
         renderEvents();
@@ -2885,6 +3222,8 @@ async function submitAgenda() {
     agendas.push(
         agenda
     );
+
+    syncSearchAgendaOptions();
 
     renderAgendaList();
 
@@ -3105,7 +3444,6 @@ async function submitTache() {
 
     return true;
 }
-
 async function deleteEditing() {
     const {
         kind,
@@ -3197,6 +3535,8 @@ async function deleteEditing() {
         }
 
         await refreshCalendarEvenements();
+
+        syncSearchAgendaOptions();
 
         renderAgendaList();
 
@@ -3849,7 +4189,6 @@ async function addPartage() {
         shareUsername.focus();
     }
 }
-
 async function removePartages() {
     const usernames =
         selectedPartages();
@@ -4005,6 +4344,102 @@ shareDialog.addEventListener(
             null;
     }
 );
+
+
+/* =========================================================
+   ÉVÉNEMENTS DE LA RECHERCHE
+   ========================================================= */
+
+if (searchFilterBtn) {
+    searchFilterBtn.addEventListener(
+        'click',
+        () => toggleSearchFilters()
+    );
+}
+
+if (searchSubmitBtn) {
+    searchSubmitBtn.addEventListener(
+        'click',
+        performSearch
+    );
+}
+
+if (searchResetBtn) {
+    searchResetBtn.addEventListener(
+        'click',
+        resetSearch
+    );
+}
+
+if (searchInput) {
+    searchInput.addEventListener(
+        'input',
+        performSearch
+    );
+
+    searchInput.addEventListener(
+        'keydown',
+        (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+
+                performSearch();
+            }
+
+            if (event.key === 'Escape') {
+                resetSearch();
+            }
+        }
+    );
+}
+
+[
+    searchTitle,
+    searchDate,
+    searchAgenda,
+    searchLocation
+]
+    .filter(Boolean)
+    .forEach(
+        (field) => {
+
+            field.addEventListener(
+                'keydown',
+                (event) => {
+
+                    if (
+                        event.key
+                        ===
+                        'Enter'
+                    ) {
+                        event.preventDefault();
+
+                        performSearch();
+                    }
+                }
+            );
+        }
+    );
+
+document.addEventListener(
+    'click',
+    (event) => {
+
+        if (
+            searchResults
+            &&
+            !searchResults.hidden
+            &&
+            !event.target.closest(
+                '.search-area'
+            )
+        ) {
+            searchResults.hidden =
+                true;
+        }
+    }
+);
+
 
 updateRecurrenceEndVisibility();
 
