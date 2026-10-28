@@ -10,250 +10,1028 @@
         { value: '#14b8a6', name: 'Turquoise' },
     ];
 %>
+
 <!DOCTYPE html>
 <html lang="fr">
+
 <%- include('partials/head', { title: 'Mes agendas' }) %>
+
 <body>
+
 <header class="topbar">
+
     <%- include('partials/brand', { href: '/agendas' }) %>
 
     <div class="week-nav">
-        <button id="today-btn" type="button" class="btn btn-glass">Aujourd'hui</button>
-        <button id="prev-week" type="button" class="btn btn-glass btn-round" aria-label="Semaine précédente">‹</button>
-        <button id="next-week" type="button" class="btn btn-glass btn-round" aria-label="Semaine suivante">›</button>
+        <button id="today-btn" type="button" class="btn btn-glass">
+            Aujourd'hui
+        </button>
+
+        <button
+            id="prev-week"
+            type="button"
+            class="btn btn-glass btn-round"
+            aria-label="Semaine précédente"
+        >
+            ‹
+        </button>
+
+        <button
+            id="next-week"
+            type="button"
+            class="btn btn-glass btn-round"
+            aria-label="Semaine suivante"
+        >
+            ›
+        </button>
+
         <h2 id="week-label" class="week-label"></h2>
     </div>
 
     <div class="user">
-        <span id="current-user"><%= locals.user ? user.username : '' %></span>
-        <button id="logout-btn" type="button" class="btn btn-glass">Se déconnecter</button>
+        <span id="current-user">
+            <%= locals.user ? user.username : '' %>
+        </span>
+
+        <button
+            id="logout-btn"
+            type="button"
+            class="btn btn-glass"
+        >
+            Se déconnecter
+        </button>
     </div>
+
 </header>
 
+
 <main class="home">
+
+    <!-- ========================= -->
+    <!-- SIDEBAR                   -->
+    <!-- ========================= -->
+
     <aside class="sidebar glass">
+
         <div class="sidebar-scroll">
-            <button id="create-btn" type="button" class="btn btn-create"
-                    aria-haspopup="dialog" aria-expanded="false" aria-controls="create-dialog">
+
+            <button
+                id="create-btn"
+                type="button"
+                class="btn btn-create"
+                aria-haspopup="dialog"
+                aria-expanded="false"
+                aria-controls="create-dialog"
+            >
                 <span class="btn-icon-glyph" aria-hidden="true">+</span>
                 <span>Créer</span>
             </button>
 
             <%- include('partials/error') %>
 
-            <section class="mini-cal" aria-label="Choisir une semaine">
+
+            <!-- MINI CALENDRIER -->
+
+            <section
+                class="mini-cal"
+                aria-label="Choisir une semaine"
+            >
+
                 <div class="mini-head">
+
                     <h2 id="mini-label"></h2>
+
                     <div class="mini-nav">
-                        <button id="mini-prev" type="button" class="btn btn-round btn-small" aria-label="Mois précédent">‹</button>
-                        <button id="mini-next" type="button" class="btn btn-round btn-small" aria-label="Mois suivant">›</button>
+
+                        <button
+                            id="mini-prev"
+                            type="button"
+                            class="btn btn-round btn-small"
+                            aria-label="Mois précédent"
+                        >
+                            ‹
+                        </button>
+
+                        <button
+                            id="mini-next"
+                            type="button"
+                            class="btn btn-round btn-small"
+                            aria-label="Mois suivant"
+                        >
+                            ›
+                        </button>
+
                     </div>
+
                 </div>
-                <div class="mini-weekdays" aria-hidden="true">
-                    <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
+
+
+                <div
+                    class="mini-weekdays"
+                    aria-hidden="true"
+                >
+                    <span>L</span>
+                    <span>M</span>
+                    <span>M</span>
+                    <span>J</span>
+                    <span>V</span>
+                    <span>S</span>
+                    <span>D</span>
                 </div>
-                <div id="mini-grid" class="mini-grid"></div>
+
+
+                <div
+                    id="mini-grid"
+                    class="mini-grid"
+                ></div>
+
             </section>
+
+
+            <!-- LISTE DES AGENDAS -->
 
             <section class="agenda-section">
-                <h2 class="section-title">Mes agendas</h2>
+
+                <h2 class="section-title">
+                    Mes agendas
+                </h2>
+
                 <div class="agenda-list-wrap">
-                    <ul id="agenda-list" class="agenda-list" aria-label="Agendas affichés"></ul>
+
+                    <ul
+                        id="agenda-list"
+                        class="agenda-list"
+                        aria-label="Agendas affichés"
+                    ></ul>
+
                 </div>
-                <p id="empty" class="hint" hidden>Aucun agenda pour l'instant. Appuyez sur Créer pour en ajouter un.</p>
+
+                <p
+                    id="empty"
+                    class="hint"
+                    hidden
+                >
+                    Aucun agenda pour l'instant.
+                    Appuyez sur Créer pour en ajouter un.
+                </p>
+
             </section>
+
         </div>
+
     </aside>
 
-    <section class="calendar glass" aria-label="Semaine">
-        <p id="calendar-hint" class="calendar-hint"></p>
-        <div id="week-body" class="week-body">
+
+    <!-- ========================= -->
+    <!-- CALENDRIER                -->
+    <!-- ========================= -->
+
+    <section
+        class="calendar glass"
+        aria-label="Semaine"
+    >
+
+        <p
+            id="calendar-hint"
+            class="calendar-hint"
+        ></p>
+
+
+        <div
+            id="week-body"
+            class="week-body"
+        >
+
             <div class="week-head">
-                <span id="tz-label" class="tz-label"></span>
-                <div id="week-days" class="week-days"></div>
+
+                <span
+                    id="tz-label"
+                    class="tz-label"
+                ></span>
+
+                <div
+                    id="week-days"
+                    class="week-days"
+                ></div>
+
             </div>
+
+
             <div class="week-grid">
-                <div id="hours" class="hours" aria-hidden="true"></div>
-                <div id="week-columns" class="week-columns"></div>
+
+                <div
+                    id="hours"
+                    class="hours"
+                    aria-hidden="true"
+                ></div>
+
+                <div
+                    id="week-columns"
+                    class="week-columns"
+                ></div>
+
             </div>
+
         </div>
+
     </section>
+
 </main>
 
-<dialog id="create-dialog" class="create-sheet" aria-labelledby="create-title">
-    <form id="create-form" class="sheet-form" novalidate>
-        <span class="sheet-grabber" aria-hidden="true"></span>
+
+<!-- ====================================================== -->
+<!-- DIALOG : CRÉER / MODIFIER UNE TÂCHE OU UN AGENDA       -->
+<!-- ====================================================== -->
+
+<dialog
+    id="create-dialog"
+    class="create-sheet"
+    aria-labelledby="create-title"
+>
+
+    <form
+        id="create-form"
+        class="sheet-form"
+        novalidate
+    >
+
+        <span
+            class="sheet-grabber"
+            aria-hidden="true"
+        ></span>
+
 
         <div class="sheet-head">
-            <h2 id="create-title" class="sheet-title visually-hidden">Créer</h2>
-            <div id="kind-switch" class="segmented" role="radiogroup" aria-label="Que voulez-vous créer ?">
-                <input id="kind-tache" type="radio" name="kind" value="tache" checked>
-                <label for="kind-tache">Tâche</label>
-                <input id="kind-agenda" type="radio" name="kind" value="agenda">
-                <label for="kind-agenda">Agenda</label>
-                <span class="segmented-thumb" aria-hidden="true"></span>
+
+            <h2
+                id="create-title"
+                class="sheet-title visually-hidden"
+            >
+                Créer
+            </h2>
+
+
+            <div
+                id="kind-switch"
+                class="segmented"
+                role="radiogroup"
+                aria-label="Que voulez-vous créer ?"
+            >
+
+                <input
+                    id="kind-tache"
+                    type="radio"
+                    name="kind"
+                    value="tache"
+                    checked
+                >
+
+                <label for="kind-tache">
+                    Tâche
+                </label>
+
+
+                <input
+                    id="kind-agenda"
+                    type="radio"
+                    name="kind"
+                    value="agenda"
+                >
+
+                <label for="kind-agenda">
+                    Agenda
+                </label>
+
+
+                <span
+                    class="segmented-thumb"
+                    aria-hidden="true"
+                ></span>
+
             </div>
-            <button id="close-dialog" type="button" class="btn btn-glass btn-round" aria-label="Fermer">×</button>
+
+
+            <button
+                id="close-dialog"
+                type="button"
+                class="btn btn-glass btn-round"
+                aria-label="Fermer"
+            >
+                ×
+            </button>
+
         </div>
 
-        <fieldset id="tache-fields" class="sheet-fields">
-            <legend class="visually-hidden">Nouvelle tâche</legend>
+
+        <!-- ================================================= -->
+        <!-- CHAMPS TÂCHE                                      -->
+        <!-- ================================================= -->
+
+        <fieldset
+            id="tache-fields"
+            class="sheet-fields"
+        >
+
+            <legend class="visually-hidden">
+                Nouvelle tâche
+            </legend>
+
 
             <div class="sheet-fields-inner">
-                <input id="tache-title" type="text" class="title-input" placeholder="Ajouter un titre" aria-label="Titre" autocomplete="off">
+
+
+                <!-- TITRE -->
+
+                <input
+                    id="tache-title"
+                    type="text"
+                    class="title-input"
+                    placeholder="Ajouter un titre"
+                    aria-label="Titre"
+                    autocomplete="off"
+                >
+
+
+                <!-- DATE / HEURES -->
 
                 <div class="field-row">
+
                     <div class="field">
-                        <label for="tache-date">Date</label>
-                        <input id="tache-date" type="date">
+
+                        <label for="tache-date">
+                            Date
+                        </label>
+
+                        <input
+                            id="tache-date"
+                            type="date"
+                        >
+
                     </div>
+
+
                     <div class="field">
-                        <label for="tache-start">Début</label>
-                        <input id="tache-start" type="time" step="300">
+
+                        <label for="tache-start">
+                            Début
+                        </label>
+
+                        <input
+                            id="tache-start"
+                            type="time"
+                            step="300"
+                        >
+
                     </div>
+
+
                     <div class="field">
-                        <label for="tache-end">Fin</label>
-                        <input id="tache-end" type="time" step="300">
+
+                        <label for="tache-end">
+                            Fin
+                        </label>
+
+                        <input
+                            id="tache-end"
+                            type="time"
+                            step="300"
+                        >
+
                     </div>
+
                 </div>
 
+
+                <!-- ======================================== -->
+                <!-- RÉCURRENCE                               -->
+                <!-- ======================================== -->
+
                 <div class="field">
-                    <label for="tache-recurrence">Récurrence</label>
+
+                    <label for="tache-recurrence">
+                        Récurrence
+                    </label>
+
                     <select id="tache-recurrence">
-                        <option value="none">Aucune</option>
-                        <option value="daily">Tous les jours</option>
-                        <option value="weekly">Toutes les semaines</option>
-                        <option value="monthly">Tous les mois</option>
+
+                        <option value="none">
+                            Aucune
+                        </option>
+
+                        <option value="daily">
+                            Tous les jours
+                        </option>
+
+                        <option value="weekly">
+                            Toutes les semaines
+                        </option>
+
+                        <option value="monthly">
+                            Tous les mois
+                        </option>
+
+                        <option value="yearly">
+                            Tous les ans
+                        </option>
+
                     </select>
+
                 </div>
 
+
+                <!-- DATE DE FIN DE RÉCURRENCE -->
+
+                <div
+                    id="recurrence-end-field"
+                    class="field"
+                >
+
+                    <label for="tache-recurrence-end">
+                        Fin de la récurrence
+                        <span class="optional">
+                            facultatif
+                        </span>
+                    </label>
+
+                    <input
+                        id="tache-recurrence-end"
+                        type="date"
+                    >
+
+                </div>
+
+
+                <!-- ======================================== -->
+                <!-- AGENDAS                                  -->
+                <!-- ======================================== -->
+
                 <div class="field">
-                    <span id="picker-label" class="field-label">Agendas</span>
-                    <button id="picker-btn" type="button" class="picker-btn"
-                            aria-labelledby="picker-label picker-btn" aria-expanded="false" aria-controls="picker-panel">
-                        <span id="picker-chips" class="picker-chips"></span>
+
+                    <span
+                        id="picker-label"
+                        class="field-label"
+                    >
+                        Agendas
+                    </span>
+
+
+                    <button
+                        id="picker-btn"
+                        type="button"
+                        class="picker-btn"
+                        aria-labelledby="picker-label picker-btn"
+                        aria-expanded="false"
+                        aria-controls="picker-panel"
+                    >
+
+                        <span
+                            id="picker-chips"
+                            class="picker-chips"
+                        ></span>
+
                     </button>
-                    <div id="picker-panel" class="picker-panel" inert>
+
+
+                    <div
+                        id="picker-panel"
+                        class="picker-panel"
+                        inert
+                    >
+
                         <div class="picker-clip">
-                            <ul id="picker-options" class="picker-options" aria-label="Agendas de la tâche"></ul>
+
+                            <ul
+                                id="picker-options"
+                                class="picker-options"
+                                aria-label="Agendas de la tâche"
+                            ></ul>
+
                         </div>
+
                     </div>
+
                 </div>
 
-                <div class="field">
-                    <label for="tache-location">Lieu <span class="optional">facultatif</span></label>
-                    <input id="tache-location" type="text" placeholder="Salle 101" autocomplete="off">
-                </div>
+
+                <!-- LIEU -->
 
                 <div class="field">
-                    <label for="tache-description">Description <span class="optional">facultatif</span></label>
-                    <textarea id="tache-description" rows="2" placeholder="Ajouter des détails"></textarea>
+
+                    <label for="tache-location">
+                        Lieu
+                        <span class="optional">
+                            facultatif
+                        </span>
+                    </label>
+
+                    <input
+                        id="tache-location"
+                        type="text"
+                        placeholder="Salle 101"
+                        autocomplete="off"
+                    >
+
                 </div>
+
+
+                <!-- DESCRIPTION -->
+
+                <div class="field">
+
+                    <label for="tache-description">
+                        Description
+                        <span class="optional">
+                            facultatif
+                        </span>
+                    </label>
+
+                    <textarea
+                        id="tache-description"
+                        rows="2"
+                        placeholder="Ajouter des détails"
+                    ></textarea>
+
+                </div>
+
             </div>
+
         </fieldset>
 
-        <fieldset id="agenda-fields" class="sheet-fields" hidden>
-            <legend class="visually-hidden">Nouvel agenda</legend>
 
-            <input id="agenda-name" type="text" class="title-input" placeholder="Nom de l'agenda" aria-label="Nom" autocomplete="off">
+        <!-- ================================================= -->
+        <!-- CHAMPS AGENDA                                     -->
+        <!-- ================================================= -->
+
+        <fieldset
+            id="agenda-fields"
+            class="sheet-fields"
+            hidden
+        >
+
+            <legend class="visually-hidden">
+                Nouvel agenda
+            </legend>
+
+
+            <input
+                id="agenda-name"
+                type="text"
+                class="title-input"
+                placeholder="Nom de l'agenda"
+                aria-label="Nom"
+                autocomplete="off"
+            >
+
+
+            <!-- COULEUR -->
 
             <div class="field">
-                <span id="color-label" class="field-label">Couleur</span>
-                <div class="swatches" role="radiogroup" aria-labelledby="color-label">
+
+                <span
+                    id="color-label"
+                    class="field-label"
+                >
+                    Couleur
+                </span>
+
+
+                <div
+                    class="swatches"
+                    role="radiogroup"
+                    aria-labelledby="color-label"
+                >
+
                     <% swatches.forEach((swatch, i) => { %>
-                    <label class="swatch" style="--swatch: <%= swatch.value %>"><input type="radio" name="color" value="<%= swatch.value %>"<%= i === 0 ? ' checked' : '' %> aria-label="<%= swatch.name %>"><span></span></label>
+
+                        <label
+                            class="swatch"
+                            style="--swatch: <%= swatch.value %>"
+                        >
+
+                            <input
+                                type="radio"
+                                name="color"
+                                value="<%= swatch.value %>"
+                                <%= i === 0 ? 'checked' : '' %>
+                                aria-label="<%= swatch.name %>"
+                            >
+
+                            <span></span>
+
+                        </label>
+
                     <% }) %>
-                    <label class="swatch swatch-custom" title="Autre couleur">
-                        <input id="color-custom-radio" type="radio" name="color" value="#1c1e3a" aria-label="Autre couleur">
+
+
+                    <!-- COULEUR PERSONNALISÉE -->
+
+                    <label
+                        class="swatch swatch-custom"
+                        title="Autre couleur"
+                    >
+
+                        <input
+                            id="color-custom-radio"
+                            type="radio"
+                            name="color"
+                            value="#1c1e3a"
+                            aria-label="Autre couleur"
+                        >
+
                         <span></span>
-                        <input id="color-custom" type="color" value="#1c1e3a" tabindex="-1" aria-hidden="true">
+
+
+                        <input
+                            id="color-custom"
+                            type="color"
+                            value="#1c1e3a"
+                            tabindex="-1"
+                            aria-hidden="true"
+                        >
+
                     </label>
+
                 </div>
+
             </div>
 
-            <div id="agenda-preview" class="agenda-preview" aria-hidden="true">
+
+            <!-- APERÇU AGENDA -->
+
+            <div
+                id="agenda-preview"
+                class="agenda-preview"
+                aria-hidden="true"
+            >
+
                 <span class="agenda-dot"></span>
-                <span id="agenda-preview-name" class="agenda-name">Nom de l'agenda</span>
+
+                <span
+                    id="agenda-preview-name"
+                    class="agenda-name"
+                >
+                    Nom de l'agenda
+                </span>
+
             </div>
+
         </fieldset>
 
-        <p id="dialog-error" class="error" role="alert" hidden></p>
+
+        <!-- MESSAGE D'ERREUR -->
+
+        <p
+            id="dialog-error"
+            class="error"
+            role="alert"
+            hidden
+        ></p>
+
+
+        <!-- BOUTONS -->
 
         <div class="sheet-footer">
-            <button id="delete-btn" type="button" class="btn btn-danger" hidden>Supprimer</button>
-            <button id="cancel-btn" type="button" class="btn btn-glass">Annuler</button>
-            <button id="save-btn" type="submit" class="btn btn-primary">Créer la tâche</button>
+
+            <button
+                id="delete-btn"
+                type="button"
+                class="btn btn-danger"
+                hidden
+            >
+                Supprimer
+            </button>
+
+
+            <button
+                id="cancel-btn"
+                type="button"
+                class="btn btn-glass"
+            >
+                Annuler
+            </button>
+
+
+            <button
+                id="save-btn"
+                type="submit"
+                class="btn btn-primary"
+            >
+                Créer la tâche
+            </button>
+
         </div>
+
     </form>
+
 </dialog>
 
-<dialog id="event-dialog" class="event-pop" aria-labelledby="event-title">
+
+<!-- ====================================================== -->
+<!-- DIALOG : DÉTAIL D'UN ÉVÉNEMENT                         -->
+<!-- ====================================================== -->
+
+<dialog
+    id="event-dialog"
+    class="event-pop"
+    aria-labelledby="event-title"
+>
+
     <div class="event-pop-inner">
+
+
         <div class="event-pop-head">
-            <span class="event-pop-dot" aria-hidden="true"></span>
+
+            <span
+                class="event-pop-dot"
+                aria-hidden="true"
+            ></span>
+
             <h2 id="event-title"></h2>
-            <button id="event-close" type="button" class="btn btn-glass btn-round btn-small" aria-label="Fermer">×</button>
+
+            <button
+                id="event-close"
+                type="button"
+                class="btn btn-glass btn-round btn-small"
+                aria-label="Fermer"
+            >
+                ×
+            </button>
+
         </div>
+
 
         <dl class="event-details">
+
+
+            <!-- DATE -->
+
             <div class="detail-row">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                <dt class="visually-hidden">Quand</dt>
+
+                <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                >
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 7v5l3 2"/>
+                </svg>
+
+                <dt class="visually-hidden">
+                    Quand
+                </dt>
+
                 <dd id="event-when"></dd>
+
             </div>
-            <div id="event-location-row" class="detail-row">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
-                <dt class="visually-hidden">Lieu</dt>
+
+
+            <!-- LIEU -->
+
+            <div
+                id="event-location-row"
+                class="detail-row"
+            >
+
+                <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                >
+                    <path
+                        d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"
+                    />
+                    <circle
+                        cx="12"
+                        cy="9.5"
+                        r="2.5"
+                    />
+                </svg>
+
+
+                <dt class="visually-hidden">
+                    Lieu
+                </dt>
+
                 <dd id="event-location"></dd>
+
             </div>
+
+
+            <!-- AGENDA -->
+
             <div class="detail-row">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
-                <dt class="visually-hidden">Agenda</dt>
-                <dd><span id="event-agenda" class="chip"></span></dd>
+
+                <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                >
+                    <rect
+                        x="3.5"
+                        y="5"
+                        width="17"
+                        height="15"
+                        rx="3"
+                    />
+                    <path d="M3.5 10h17M8 3v4M16 3v4"/>
+                </svg>
+
+
+                <dt class="visually-hidden">
+                    Agenda
+                </dt>
+
+                <dd>
+                    <span
+                        id="event-agenda"
+                        class="chip"
+                    ></span>
+                </dd>
+
             </div>
+
+
+            <!-- DESCRIPTION -->
+
             <div class="detail-row">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 11h14M5 16h9"/></svg>
-                <dt class="visually-hidden">Description</dt>
-                <dd id="event-description" class="event-description"></dd>
+
+                <svg
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                >
+                    <path d="M5 6h14M5 11h14M5 16h9"/>
+                </svg>
+
+
+                <dt class="visually-hidden">
+                    Description
+                </dt>
+
+                <dd
+                    id="event-description"
+                    class="event-description"
+                ></dd>
+
             </div>
+
         </dl>
 
-        <p id="event-error" class="error" role="alert" hidden></p>
+
+        <p
+            id="event-error"
+            class="error"
+            role="alert"
+            hidden
+        ></p>
+
 
         <div class="event-actions">
-            <button id="event-delete" type="button" class="btn btn-danger">Supprimer</button>
-            <button id="event-edit" type="button" class="btn btn-glass">Modifier</button>
+
+            <button
+                id="event-delete"
+                type="button"
+                class="btn btn-danger"
+            >
+                Supprimer
+            </button>
+
+
+            <button
+                id="event-edit"
+                type="button"
+                class="btn btn-glass"
+            >
+                Modifier
+            </button>
+
         </div>
+
     </div>
+
 </dialog>
 
-<dialog id="share-dialog" class="event-pop share-pop" aria-labelledby="share-title">
+
+<!-- ====================================================== -->
+<!-- DIALOG : PARTAGE D'AGENDA                              -->
+<!-- ====================================================== -->
+
+<dialog
+    id="share-dialog"
+    class="event-pop share-pop"
+    aria-labelledby="share-title"
+>
+
     <div class="event-pop-inner">
+
+
         <div class="event-pop-head">
-            <span class="event-pop-dot" aria-hidden="true"></span>
+
+            <span
+                class="event-pop-dot"
+                aria-hidden="true"
+            ></span>
+
             <h2 id="share-title"></h2>
-            <button id="share-close" type="button" class="btn btn-glass btn-round btn-small" aria-label="Fermer">×</button>
+
+            <button
+                id="share-close"
+                type="button"
+                class="btn btn-glass btn-round btn-small"
+                aria-label="Fermer"
+            >
+                ×
+            </button>
+
         </div>
 
-        <form id="share-form" class="share-form" novalidate>
-            <label for="share-username" class="visually-hidden">Nom d'utilisateur</label>
-            <input id="share-username" type="text" placeholder="Nom d'utilisateur" autocomplete="off">
-            <button id="share-add" type="submit" class="btn btn-primary">Ajouter</button>
+
+        <form
+            id="share-form"
+            class="share-form"
+            novalidate
+        >
+
+            <label
+                for="share-username"
+                class="visually-hidden"
+            >
+                Nom d'utilisateur
+            </label>
+
+
+            <input
+                id="share-username"
+                type="text"
+                placeholder="Nom d'utilisateur"
+                autocomplete="off"
+            >
+
+
+            <button
+                id="share-add"
+                type="submit"
+                class="btn btn-primary"
+            >
+                Ajouter
+            </button>
+
         </form>
 
-        <p id="share-error" class="error" role="alert" hidden></p>
-        <p id="share-status" class="share-status" role="status" hidden></p>
 
-        <h3 class="share-subtitle">Personnes ayant accès</h3>
-        <ul id="share-list" class="share-list" aria-label="Personnes ayant accès"></ul>
-        <p id="share-empty" class="share-empty"></p>
+        <p
+            id="share-error"
+            class="error"
+            role="alert"
+            hidden
+        ></p>
+
+
+        <p
+            id="share-status"
+            class="share-status"
+            role="status"
+            hidden
+        ></p>
+
+
+        <h3 class="share-subtitle">
+            Personnes ayant accès
+        </h3>
+
+
+        <ul
+            id="share-list"
+            class="share-list"
+            aria-label="Personnes ayant accès"
+        ></ul>
+
+
+        <p
+            id="share-empty"
+            class="share-empty"
+        ></p>
+
 
         <div class="event-actions">
-            <button id="share-remove" type="button" class="btn btn-danger" data-label="Retirer" disabled>Retirer</button>
+
+            <button
+                id="share-remove"
+                type="button"
+                class="btn btn-danger"
+                data-label="Retirer"
+                disabled
+            >
+                Retirer
+            </button>
+
         </div>
+
     </div>
+
 </dialog>
 
+
+<!-- SCRIPT -->
+
 <%- include('partials/scripts', { script: 'agendas.js' }) %>
+
 </body>
+
 </html>
