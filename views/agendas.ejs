@@ -22,8 +22,14 @@
 
     <%- include('partials/brand', { href: '/agendas' }) %>
 
+    <!-- NAVIGATION SEMAINE -->
     <div class="week-nav">
-        <button id="today-btn" type="button" class="btn btn-glass">
+
+        <button
+            id="today-btn"
+            type="button"
+            class="btn btn-glass"
+        >
             Aujourd'hui
         </button>
 
@@ -45,10 +51,184 @@
             ›
         </button>
 
-        <h2 id="week-label" class="week-label"></h2>
+        <h2
+            id="week-label"
+            class="week-label"
+        ></h2>
+
     </div>
 
+
+    <!-- ================================================= -->
+    <!-- RECHERCHE DE RENDEZ-VOUS                          -->
+    <!-- ================================================= -->
+
+    <div class="search-area">
+
+        <div class="search-bar">
+
+            <span
+                class="search-icon"
+                aria-hidden="true"
+            >
+                🔍
+            </span>
+
+            <input
+                id="search-input"
+                type="search"
+                placeholder="Rechercher un rendez-vous..."
+                autocomplete="off"
+                aria-label="Rechercher un rendez-vous"
+            >
+
+            <button
+                id="search-filter-btn"
+                type="button"
+                class="btn btn-glass"
+                aria-label="Afficher les critères de recherche"
+                aria-expanded="false"
+                aria-controls="search-filters"
+            >
+                Filtres
+            </button>
+
+        </div>
+
+
+        <!-- FILTRES -->
+
+        <div
+            id="search-filters"
+            class="search-filters"
+            hidden
+        >
+
+            <!-- TITRE -->
+            <div class="field">
+
+                <label for="search-title">
+                    Titre
+                </label>
+
+                <input
+                    id="search-title"
+                    type="text"
+                    placeholder="Ex. Réunion"
+                    autocomplete="off"
+                >
+
+            </div>
+
+
+            <!-- DATE -->
+            <div class="field">
+
+                <label for="search-date">
+                    Date
+                </label>
+
+                <input
+                    id="search-date"
+                    type="date"
+                >
+
+            </div>
+
+
+            <!-- AGENDA -->
+            <div class="field">
+
+                <label for="search-agenda">
+                    Agenda
+                </label>
+
+                <select id="search-agenda">
+
+                    <option value="">
+                        Tous les agendas
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <!-- LIEU -->
+            <div class="field">
+
+                <label for="search-location">
+                    Lieu
+                </label>
+
+                <input
+                    id="search-location"
+                    type="text"
+                    placeholder="Ex. Salle 101"
+                    autocomplete="off"
+                >
+
+            </div>
+
+
+            <div class="search-filter-actions">
+
+                <button
+                    id="search-reset-btn"
+                    type="button"
+                    class="btn btn-glass"
+                >
+                    Réinitialiser
+                </button>
+
+                <button
+                    id="search-submit-btn"
+                    type="button"
+                    class="btn btn-primary"
+                >
+                    Rechercher
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- RÉSULTATS DE RECHERCHE -->
+
+        <div
+            id="search-results"
+            class="search-results"
+            hidden
+        >
+
+            <p
+                id="search-results-count"
+                class="search-results-count"
+            ></p>
+
+            <ul
+                id="search-results-list"
+                class="search-results-list"
+                aria-label="Résultats de recherche"
+            ></ul>
+
+            <p
+                id="search-empty"
+                class="search-empty"
+                hidden
+            >
+                Aucun rendez-vous trouvé.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <!-- UTILISATEUR -->
     <div class="user">
+
         <span id="current-user">
             <%= locals.user ? user.username : '' %>
         </span>
@@ -60,6 +240,7 @@
         >
             Se déconnecter
         </button>
+
     </div>
 
 </header>
@@ -83,9 +264,18 @@
                 aria-expanded="false"
                 aria-controls="create-dialog"
             >
-                <span class="btn-icon-glyph" aria-hidden="true">+</span>
-                <span>Créer</span>
+                <span
+                    class="btn-icon-glyph"
+                    aria-hidden="true"
+                >
+                    +
+                </span>
+
+                <span>
+                    Créer
+                </span>
             </button>
+
 
             <%- include('partials/error') %>
 
@@ -447,8 +637,8 @@
                 >
 
                     <label for="tache-recurrence-end">
-    Fin de la récurrence
-</label>
+                        Fin de la récurrence
+                    </label>
 
                     <input
                         id="tache-recurrence-end"
@@ -516,6 +706,7 @@
 
                     <label for="tache-location">
                         Lieu
+
                         <span class="optional">
                             facultatif
                         </span>
@@ -537,6 +728,7 @@
 
                     <label for="tache-description">
                         Description
+
                         <span class="optional">
                             facultatif
                         </span>
@@ -636,7 +828,6 @@
                         >
 
                         <span></span>
-
 
                         <input
                             id="color-custom"
@@ -768,7 +959,12 @@
                     viewBox="0 0 24 24"
                     aria-hidden="true"
                 >
-                    <circle cx="12" cy="12" r="9"/>
+                    <circle
+                        cx="12"
+                        cy="12"
+                        r="9"
+                    />
+
                     <path d="M12 7v5l3 2"/>
                 </svg>
 
@@ -795,6 +991,7 @@
                     <path
                         d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"
                     />
+
                     <circle
                         cx="12"
                         cy="9.5"
@@ -827,7 +1024,10 @@
                         height="15"
                         rx="3"
                     />
-                    <path d="M3.5 10h17M8 3v4M16 3v4"/>
+
+                    <path
+                        d="M3.5 10h17M8 3v4M16 3v4"
+                    />
                 </svg>
 
 
@@ -836,10 +1036,12 @@
                 </dt>
 
                 <dd>
+
                     <span
                         id="event-agenda"
                         class="chip"
                     ></span>
+
                 </dd>
 
             </div>
@@ -853,7 +1055,9 @@
                     viewBox="0 0 24 24"
                     aria-hidden="true"
                 >
-                    <path d="M5 6h14M5 11h14M5 16h9"/>
+                    <path
+                        d="M5 6h14M5 11h14M5 16h9"
+                    />
                 </svg>
 
 
@@ -1030,5 +1234,4 @@
 <%- include('partials/scripts', { script: 'agendas.js' }) %>
 
 </body>
-
 </html>
