@@ -30,6 +30,11 @@ apiRouter.get("/health", (req, res) => {
     res.set("Cache-Control", "no-store");
     res.json({ status: "ok" });
 });
+apiRouter.get(
+    "/evenements/:id/occurrences",
+    requireAuth,
+    EvenementController.getOccurrences
+);
 
 apiRouter.use((req, res, next) => {
     next(createError(404, "Route API introuvable."));

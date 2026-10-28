@@ -104,7 +104,11 @@ a {
 .auth .card::after,
 .btn.btn-create::after,
 .btn.btn-glass::after,
-.agenda-lens::after,
+.agenda-edit::after,
+.agenda-item:has(.agenda-check:checked)::after,
+.mini-day.in-week::after,
+.mini-day.today::after,
+.week-day-number::after,
 .create-sheet::after,
 .event-pop::after {
     content: "";
@@ -247,7 +251,8 @@ textarea:focus {
 input[type="checkbox"]:focus-visible,
 .btn:focus-visible,
 .mini-day:focus-visible,
-.agenda-item:focus-visible,
+.agenda-check:focus-visible + .agenda-box,
+.share-check:focus-visible + .agenda-box,
 .link-btn:focus-visible,
 .picker-btn:focus-visible,
 .segmented input:focus-visible + label,
@@ -486,7 +491,13 @@ body:has(> .home) {
 }
 
 .mini-day.in-week {
-    background: var(--tint-strong);
+    position: relative;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.5));
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        inset 0 0 6px rgba(255, 255, 255, 0.8),
+        0 0 0 1px rgba(28, 30, 58, 0.06),
+        0 2px 6px rgba(28, 30, 58, 0.08);
 }
 
 .mini-day.other-month {
@@ -494,9 +505,16 @@ body:has(> .home) {
 }
 
 .mini-day.today {
+    position: relative;
     font-weight: 800;
     color: var(--ink);
-    background: var(--sun);
+    background-color: color-mix(in srgb, var(--sun) 88%, rgba(255, 255, 255, 0.6));
+    background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 55%);
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        inset 0 -1px 1px rgba(255, 255, 255, 0.5),
+        inset 0 0 6px rgba(255, 255, 255, 0.55),
+        0 2px 8px rgba(245, 165, 36, 0.45);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -542,6 +560,9 @@ body:has(> .home) {
 .agenda-list {
     position: relative;
     z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -552,6 +573,7 @@ body:has(> .home) {
 }
 
 .agenda-item {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -567,26 +589,102 @@ body:has(> .home) {
     border: none;
     border-radius: 14px;
     cursor: pointer;
-    transition: color 200ms ease, transform 160ms var(--ease-out);
+    user-select: none;
+    transition:
+        color 200ms ease,
+        background-color 360ms ease,
+        box-shadow 360ms ease,
+        transform 160ms var(--ease-out);
 }
 
 .agenda-item:active {
     transform: scale(0.98);
 }
 
-.agenda-list:has([aria-pressed="true"]) .agenda-item[aria-pressed="false"] {
+.agenda-list:has(.agenda-check:checked) .agenda-item:not(:has(.agenda-check:checked)) {
     color: var(--muted);
 }
 
-.agenda-item[aria-pressed="true"] {
-    font-weight: 700;
+.agenda-item:has(.agenda-check:checked) {
+    font-weight: 600;
+    background-color: color-mix(in srgb, var(--agenda-color) 16%, rgba(255, 255, 255, 0.7));
+    background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.05) 60%);
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        inset 0 -1px 1px rgba(255, 255, 255, 0.7),
+        inset 0 0 14px rgba(255, 255, 255, 0.75),
+        0 0 0 1px color-mix(in srgb, var(--agenda-color) 22%, transparent),
+        0 4px 14px color-mix(in srgb, var(--agenda-color) 24%, transparent);
 }
 
 @media (hover: hover) and (pointer: fine) {
-    .agenda-item[aria-pressed="false"]:hover {
+    .agenda-item:hover {
         color: var(--text);
         background: var(--tint);
     }
+
+    .agenda-item:has(.agenda-check:checked):hover {
+        background-color: color-mix(in srgb, var(--agenda-color) 22%, rgba(255, 255, 255, 0.7));
+    }
+
+    .agenda-item:hover .agenda-box,
+    .share-person:hover .agenda-box {
+        box-shadow:
+            inset 0 0 0 2px var(--agenda-color),
+            0 0 0 4px color-mix(in srgb, var(--agenda-color) 16%, transparent);
+    }
+}
+
+.agenda-box {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    background: color-mix(in srgb, var(--agenda-color) 8%, #ffffff);
+    border-radius: 6px;
+    box-shadow:
+        inset 0 0 0 2px var(--agenda-color),
+        0 0 0 0 transparent;
+    transition:
+        background 220ms var(--ease-out),
+        box-shadow 260ms var(--ease-out),
+        transform 280ms var(--spring);
+}
+
+.agenda-box svg {
+    width: 13px;
+    height: 13px;
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 22;
+    stroke-dashoffset: 22;
+    transition: stroke-dashoffset 260ms var(--ease-out);
+}
+
+.agenda-check:checked + .agenda-box,
+.share-check:checked + .agenda-box {
+    background: linear-gradient(160deg,
+        color-mix(in srgb, var(--agenda-color) 72%, #ffffff),
+        var(--agenda-color) 70%);
+    box-shadow:
+        inset 0 0 0 1px color-mix(in srgb, var(--agenda-color) 80%, #000000),
+        inset 0 1px 1px rgba(255, 255, 255, 0.55),
+        0 2px 6px color-mix(in srgb, var(--agenda-color) 45%, transparent);
+}
+
+.agenda-check:checked + .agenda-box svg,
+.share-check:checked + .agenda-box svg {
+    stroke-dashoffset: 0;
+    transition-delay: 60ms;
+}
+
+.agenda-item:active .agenda-box,
+.share-person:active .agenda-box {
+    transform: scale(0.86);
 }
 
 .agenda-dot {
@@ -601,12 +699,21 @@ body:has(> .home) {
     transition: box-shadow 260ms var(--ease-out), transform 260ms var(--spring);
 }
 
-.agenda-item[aria-pressed="true"] .agenda-dot {
-    transform: scale(1.15);
-    box-shadow:
-        inset 0 1px 1px rgba(255, 255, 255, 0.55),
-        0 0 0 4px color-mix(in srgb, var(--agenda-color) 26%, transparent),
-        0 0 14px color-mix(in srgb, var(--agenda-color) 70%, transparent);
+.agenda-shared {
+    flex: none;
+    display: inline-flex;
+    margin-right: -4px;
+    color: color-mix(in srgb, var(--agenda-color) 65%, var(--text));
+}
+
+.agenda-shared svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .agenda-name {
@@ -625,44 +732,8 @@ body:has(> .home) {
     color: var(--faint);
 }
 
-.agenda-item[aria-pressed="true"] .agenda-count {
+.agenda-item:has(.agenda-check:checked) .agenda-count {
     color: color-mix(in srgb, var(--agenda-color) 60%, var(--text));
-}
-
-.agenda-lens {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 40px;
-    border-radius: 14px;
-    background-color: color-mix(in srgb, var(--agenda-color, #ffffff) 16%, rgba(255, 255, 255, 0.7));
-    background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.05) 60%);
-    box-shadow:
-        inset 0 1px 1px #ffffff,
-        inset 0 -1px 1px rgba(255, 255, 255, 0.7),
-        inset 0 0 14px rgba(255, 255, 255, 0.75),
-        0 0 0 1px color-mix(in srgb, var(--agenda-color, #1c1e3a) 22%, transparent),
-        0 6px 18px color-mix(in srgb, var(--agenda-color, #1c1e3a) 26%, transparent);
-    opacity: 0;
-    scale: 0.94;
-    pointer-events: none;
-    transition:
-        transform 460ms var(--spring),
-        height 300ms var(--ease-out),
-        opacity 220ms ease,
-        scale 320ms var(--spring),
-        background-color 360ms ease,
-        box-shadow 360ms ease;
-}
-
-.agenda-lens.visible {
-    opacity: 1;
-    scale: 1;
-}
-
-.agenda-lens.jump {
-    transition: none;
 }
 
 .calendar {
@@ -729,7 +800,14 @@ body:has(> .home) {
     font-weight: 500;
     letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
+    position: relative;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.5));
     border-radius: 50%;
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        inset 0 0 12px rgba(255, 255, 255, 0.8),
+        0 0 0 1px rgba(28, 30, 58, 0.06),
+        0 4px 12px rgba(28, 30, 58, 0.08);
 }
 
 .week-day.today .week-day-name {
@@ -739,8 +817,14 @@ body:has(> .home) {
 .week-day.today .week-day-number {
     font-weight: 700;
     color: var(--ink);
-    background: var(--sun);
-    box-shadow: 0 4px 14px rgba(245, 165, 36, 0.40);
+    background-color: color-mix(in srgb, var(--sun) 88%, rgba(255, 255, 255, 0.6));
+    background-image: linear-gradient(160deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0) 55%);
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        inset 0 -1px 1px rgba(255, 255, 255, 0.5),
+        inset 0 0 12px rgba(255, 255, 255, 0.6),
+        0 0 0 1px rgba(245, 165, 36, 0.25),
+        0 6px 18px rgba(245, 165, 36, 0.45);
 }
 
 .week-grid {
@@ -1663,18 +1747,18 @@ body:has(> .home) {
     .btn-icon-glyph,
     .agenda-item,
     .agenda-dot,
+    .agenda-box,
+    .agenda-box svg,
     .segmented-thumb,
     .swatch span {
         transition: opacity 150ms ease, color 150ms ease;
     }
 
     .btn:active,
-    .agenda-item:active {
+    .agenda-item:active,
+    .agenda-item:active .agenda-box,
+    .share-person:active .agenda-box {
         transform: none;
-    }
-
-    .agenda-lens {
-        transition: opacity 150ms ease, background-color 150ms ease;
     }
 
     .event,
@@ -1764,15 +1848,23 @@ body:has(> .home) {
     justify-content: center;
     width: 28px;
     height: 28px;
-    margin-left: 2px;
+    margin-left: 4px;
     padding: 0;
     color: var(--muted);
-    background: transparent;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.55));
     border: none;
     border-radius: 50%;
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        inset 0 0 10px rgba(255, 255, 255, 0.8),
+        0 0 0 1px rgba(28, 30, 58, 0.07),
+        0 2px 6px rgba(28, 30, 58, 0.08);
     cursor: pointer;
-    opacity: 0;
-    transition: opacity 150ms ease, background-color 150ms ease;
+    transition: color 150ms ease, box-shadow 200ms ease, transform 160ms var(--ease-out);
+}
+
+.agenda-edit:active {
+    transform: scale(0.92);
 }
 
 .agenda-edit svg {
@@ -1785,14 +1877,15 @@ body:has(> .home) {
     stroke-linejoin: round;
 }
 
-.agenda-list li:hover .agenda-edit,
-.agenda-list li:focus-within .agenda-edit {
-    opacity: 1;
-}
-
-.agenda-edit:hover {
-    color: var(--text);
-    background: var(--tint);
+@media (hover: hover) and (pointer: fine) {
+    .agenda-edit:hover {
+        color: var(--text);
+        box-shadow:
+            inset 0 1px 1px #ffffff,
+            inset 0 0 10px rgba(255, 255, 255, 0.8),
+            0 0 0 1px rgba(28, 30, 58, 0.1),
+            0 4px 12px rgba(28, 30, 58, 0.14);
+    }
 }
 
 .agenda-edit:focus-visible {
@@ -1800,11 +1893,6 @@ body:has(> .home) {
     outline-offset: 2px;
 }
 
-@media (hover: none) {
-    .agenda-edit {
-        opacity: 1;
-    }
-}
 
 
 .event.draft {
@@ -1853,4 +1941,135 @@ body:has(> .home) {
 .draft-more:focus-visible {
     outline: 2px solid var(--agenda-color);
     outline-offset: 2px;
+}
+
+
+.share-pop {
+    width: 360px;
+}
+
+.share-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.share-form input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    height: 40px;
+}
+
+.share-form .btn.btn-primary {
+    flex: none;
+    height: 40px;
+    margin: 0;
+    padding: 0 16px;
+    font-size: 0.875rem;
+}
+
+.share-pop .error {
+    margin-top: 10px;
+}
+
+.share-status {
+    margin: 10px 0 0;
+    padding: 10px 14px;
+    font-size: 0.875rem;
+    color: #0b6b47;
+    background: rgba(16, 185, 129, 0.12);
+    border-radius: var(--radius-sm);
+}
+
+.share-subtitle {
+    margin: 20px 0 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.share-list {
+    max-height: 220px;
+    margin: 0;
+    padding: 4px;
+    overflow-y: auto;
+    list-style: none;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 14px;
+    box-shadow:
+        inset 0 1px 1px #ffffff,
+        0 0 0 1px rgba(28, 30, 58, 0.07);
+}
+
+.share-list:empty {
+    display: none;
+}
+
+.share-person {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    padding: 8px 10px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text);
+    border-radius: 10px;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 150ms ease;
+}
+
+.share-person:has(.share-check:checked) {
+    background: color-mix(in srgb, var(--agenda-color) 10%, transparent);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .share-person:hover {
+        background: var(--tint);
+    }
+
+    .share-person:has(.share-check:checked):hover {
+        background: color-mix(in srgb, var(--agenda-color) 14%, transparent);
+    }
+}
+
+.share-avatar {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: color-mix(in srgb, var(--agenda-color) 55%, var(--text));
+    background: color-mix(in srgb, var(--agenda-color) 18%, #ffffff);
+    border-radius: 50%;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7);
+}
+
+.share-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.share-empty {
+    margin: 0;
+    padding: 6px 2px;
+    font-size: 0.875rem;
+    color: var(--muted);
+}
+
+.share-pop .event-actions {
+    margin-top: 14px;
+}
+
+.share-pop .btn.btn-danger:disabled {
+    opacity: 0.45;
+    cursor: default;
 }
