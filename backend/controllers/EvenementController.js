@@ -2,19 +2,48 @@ import createError from "http-errors";
 import { Evenement } from "../models/Evenement.js";
 import { AgendaRepository } from "../repositories/AgendaRepository.js";
 import { EvenementRepository } from "../repositories/EvenementRepository.js";
+import { RecurrenceService } from "../services/RecurrenceService.js";
+
 
 function readEvenement(body, id, agendaId) {
-    if (typeof body?.title !== "string" || typeof body?.start !== "string" || typeof body?.end !== "string" ||
-        (body.location !== undefined && typeof body.location !== "string") ||
-        (body.description !== undefined && typeof body.description !== "string")) {
-        throw createError(400, "Titre et dates requis ; lieu et description doivent être du texte.");
+    if (
+        typeof body?.title !== "string" ||
+        typeof body?.start !== "string" ||
+        typeof body?.end !== "string" ||
+        (body.location !== undefined &&
+            typeof body.location !== "string") ||
+        (body.description !== undefined &&
+            typeof body.description !== "string") ||
+        (body.recurrenceFrequency !== undefined &&
+            body.recurrenceFrequency !== null &&
+            typeof body.recurrenceFrequency !== "string") ||
+        (body.recurrenceEndDate !== undefined &&
+            body.recurrenceEndDate !== null &&
+            typeof body.recurrenceEndDate !== "string")
+    ) {
+        throw createError(
+            400,
+            "Titre et dates requis ; les autres champs doivent respecter leur format."
+        );
     }
+
     try {
-        return new Evenement(id, agendaId, body.title, body.start, body.end, body.description, body.location);
+        return new Evenement(
+            id,
+            agendaId,
+            body.title,
+            body.start,
+            body.end,
+            body.description,
+            body.location,
+            body.recurrenceFrequency ?? null,
+            body.recurrenceEndDate ?? null
+        );
     } catch (error) {
         throw createError(400, error.message);
     }
 }
+
 
 async function findOwnedEvenement(req, evenements) {
     const evenement = await evenements.findById(req.params.id);
@@ -75,4 +104,31 @@ export class EvenementController {
         }
         res.status(204).end();
     }
+
+    
+    static async getOccurrences(req, res) {
+        const evenements = new EvenementRepository(
+            req.app.locals.database
+        );
+
+        const evenement = await findOwnedEvenement(req, evenements);
+
+        const occurrences = RecurrenceService.genererOccurrences(
+            evenement,
+            100
+        );
+
+        res.json({
+            evenementId: evenement.id,
+            occurrences: occurrences.map(occurrence => ({
+                start: occurrence.debut.toISOString(),
+                end: occurrence.fin.toISOString()
+            }))
+        });
+    }
+
 }
+
+
+
+
