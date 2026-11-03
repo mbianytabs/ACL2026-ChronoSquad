@@ -35,7 +35,11 @@ apiRouter.get(
     requireAuth,
     EvenementController.getOccurrences
 );
-
+apiRouter.get(
+    "/evenements/search",
+    requireAuth,
+    EvenementController.searchEvenements
+);
 apiRouter.use((req, res, next) => {
     next(createError(404, "Route API introuvable."));
 });
