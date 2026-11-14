@@ -27,3 +27,11 @@ CREATE TABLE IF NOT EXISTS evenement (
 
 CREATE INDEX IF NOT EXISTS agenda_owner_idx ON agenda(owner_id);
 CREATE INDEX IF NOT EXISTS evenement_agenda_start_idx ON evenement(agenda_id, start);
+
+CREATE TABLE IF NOT EXISTS partage (
+    agenda_id TEXT NOT NULL REFERENCES agenda(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+    PRIMARY KEY (agenda_id, user_id)
+) STRICT;
+
+CREATE INDEX IF NOT EXISTS partage_user_idx ON partage(user_id);

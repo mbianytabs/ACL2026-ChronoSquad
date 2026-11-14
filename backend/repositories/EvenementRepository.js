@@ -106,6 +106,14 @@ export class EvenementRepository {
         return rows.map(toEvenement);
     }
 
+    async findAccessible(userId) {
+        return this.db.all(`SELECT evenement.* FROM evenement
+            JOIN agenda ON agenda.id = evenement.agenda_id
+            WHERE agenda.owner_id = ? OR EXISTS (
+                SELECT 1 FROM partage WHERE partage.agenda_id = agenda.id AND partage.user_id = ?
+            ) ORDER BY evenement.start, evenement.id`, [userId, userId]).map(toEvenement);
+    }
+
     async update(id, evenement) {
         const result = this.db.run(
             `UPDATE evenement
@@ -151,8 +159,10 @@ export class EvenementRepository {
         startDate = null,
        endDate = null
     } = {}) {
-        const conditions = ["agenda.owner_id = ?"];
-        const params = [ownerId];
+        const conditions = [`(agenda.owner_id = ? OR EXISTS (
+            SELECT 1 FROM partage WHERE partage.agenda_id = agenda.id AND partage.user_id = ?
+        ))`];
+        const params = [ownerId, ownerId];
 
         const text = query.trim();
 

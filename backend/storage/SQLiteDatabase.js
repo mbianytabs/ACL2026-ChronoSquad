@@ -94,6 +94,7 @@ export class SQLiteDatabase {
             FROM sqlite_schema
             WHERE type = 'table'
               AND name <> 'evenement'
+              AND name <> 'partage'
               AND sql LIKE '%agenda_id%'
         `);
 

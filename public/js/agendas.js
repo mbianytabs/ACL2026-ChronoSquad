@@ -655,10 +655,6 @@ function createAgendaRow(agenda) {
 
     item.append(row);
 
-    if (!isOwnAgenda(agenda)) {
-        return item;
-    }
-
     const edit =
         document.createElement('button');
 
@@ -690,6 +686,11 @@ function createAgendaRow(agenda) {
                 agenda
             )
     );
+
+    item.append(edit);
+    if (!isOwnAgenda(agenda)) {
+        return item;
+    }
 
     const share =
         document.createElement('button');
@@ -730,10 +731,7 @@ function createAgendaRow(agenda) {
             )
     );
 
-    item.append(
-        edit,
-        share
-    );
+    item.append(share);
 
     return item;
 }
@@ -1596,6 +1594,9 @@ function openEvent(
 
     eventError.hidden =
         true;
+
+    eventDeleteBtn.hidden = false;
+    document.getElementById('event-edit').hidden = false;
 
     disarmDelete(
         eventDeleteBtn
@@ -2676,20 +2677,10 @@ function openCreate({
 
     updateRecurrenceEndVisibility();
 
-    const preset =
-        selectedAgendaIds.size
-            ? [
-                ...selectedAgendaIds
-            ]
-            : agendas
-                .slice(
-                    0,
-                    1
-                )
-                .map(
-                    (a) =>
-                        a.id
-                );
+    let preset = agendas.filter(a => selectedAgendaIds.has(a.id)).map(a => a.id);
+    if (preset.length === 0 && agendas.length > 0) {
+        preset = [agendas[0].id];
+    }
 
     pickedAgendaIds =
         new Set(
@@ -2912,7 +2903,7 @@ function setKind(kind) {
     );
 
     deleteBtn.hidden =
-        editing === null;
+        editing === null || (editing.kind === 'agenda' && !isOwnAgenda(editing.item));
 
     disarmDelete(
         deleteBtn
@@ -3200,7 +3191,7 @@ async function submitAgenda() {
                     a.id
                     ===
                     updated.id
-                        ? updated
+                        ? { ...a, ...updated }
                         : a
             );
 
