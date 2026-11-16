@@ -1,177 +1,101 @@
 # Sprint 1 : Conception
 
-## 1. Architecture générale
+Ce document décrit uniquement ce qui a été ajouté ou modifié pendant le sprint 1. L'architecture générale (Express, EJS, SQLite embarqué), les choix techniques de base, l'authentification, le schéma initial (`user`, `agenda`, `evenement`), l'initialisation de la base et le lancement du projet sont décrits dans [la conception du sprint 0](../sprint0/conception.md) et restent valables.
 
-Un serveur unique Node.js / Express sur le port 3000 :
+## 1. Périmètre du sprint
 
-- rend les pages EJS de `views/` et sert les ressources de `public/` ;
-- expose une API JSON sous `/api` ;
-- initialise SQLite avant d'accepter les requêtes ;
-- conserve les données dans `data/chronosquad.sqlite`.
+Objectif : passer d'une gestion simple des agendas à une gestion avancée — vue consolidée de plusieurs agendas, rendez-vous récurrents, recherche et partage d'agendas.
 
-SQLite est embarqué dans Node.js : aucun serveur SQL séparé, XAMPP ou phpMyAdmin n'est nécessaire. Les navigateurs communiquent avec Express, jamais directement avec le fichier SQLite.
+| User story | Back-end | Front-end |
+|------------|----------|-----------|
+| US-08 Visualisation | Aucune modification : `GET /api/agendas` et `GET /api/evenements` renvoient déjà toutes les données nécessaires | Sélection de plusieurs agendas ; le calendrier affiche ensemble les rendez-vous des agendas sélectionnés |
+| US-09 Récurrence | Colonnes de récurrence (migrations 004 et 005), validation dans `Evenement`, service `RecurrenceService`, route des occurrences | Champs « récurrence » et « fin de récurrence » dans le formulaire ; affichage des occurrences dans le calendrier |
+| US-10 Recherche | `EvenementRepository.findSearchCandidates()`, service `RechercheService`, route `GET /api/evenements/search` | Barre de recherche et filtres (titre, date, agenda, lieu) avec liste de résultats |
+| US-11 / US-12 Partage | Table `partage`, méthodes de partage dans `AgendaRepository`, routes `/api/agendas/:id/partages`, contrôle d'accès `hasAccess()` | Panneau de partage : ajout d'un utilisateur, liste des partages, retrait d'un partage ; affichage du propriétaire des agendas partagés |
 
-```mermaid
-flowchart LR
-    C[Navigateurs] -->|HTTP| E[Express : port 3000]
-    E --> P[Routes de pages]
-    P --> V[Vues EJS]
-    E --> S[Ressources public/]
-    E --> A[Routes API /api]
-    A --> CT[Contrôleurs + requireAuth]
-    CT --> R[Repositories]
-    R --> DB[SQLiteDatabase : connexion partagée]
-    DB --> F[(data/chronosquad.sqlite)]
-```
-
-**État actuel :** le front est raccordé à l'inscription, à la connexion, à la consultation de l'utilisateur courant et à la déconnexion. Les agendas et les événements peuvent être consultés, créés, modifiés et supprimés. Les routes métier exigent une session et vérifient le propriétaire des données.
-
-**Évolution du sprint 1 :** un événement peut être récurrent (US-09) : quotidien, hebdomadaire ou mensuel, jusqu'à une date de fin. Les paramètres de récurrence sont conservés dans l'événement ; le calcul des occurrences est confié à un service dédié, `RecurrenceService`.
-
-Les pages principales sont `/` (connexion), `/register` (inscription) et `/agendas` (calendrier). Le front charge les données du calendrier depuis l'API. La page temporaire `/test/auth` existe encore pour simuler l'authentification sans mise en forme.
-
-## 2. Choix techniques
+## 2. Choix techniques ajoutés
 
 | Besoin | Choix | Justification |
 |--------|-------|---------------|
-| Serveur HTTP | Express | Pages et API sur le même serveur |
-| Vues | EJS | Génération HTML côté serveur |
-| Persistance | SQLite via `node:sqlite` / `DatabaseSync` | SQL embarqué, sans installation d'un service externe |
-| Runtime | Node.js >= 22.13.0 ; Node.js 24 LTS conseillé | Disponibilité de `node:sqlite` sans option de lancement |
-| Mots de passe | Argon2, utilisé par le modèle `User` | Le hash est conservé en base, exclu de `User.toJSON()` |
-| Identifiants utilisateurs | Entiers auto-incrémentés par SQLite : 1, 2, 3… | Génération par la base, sans compteur JavaScript ; agendas et événements gardent leurs identifiants existants |
-| Relations | Clés étrangères activées à chaque connexion | Empêche agendas et événements orphelins |
-| Requêtes | Paramètres SQL `?` | Valeurs séparées du texte SQL |
-| Transactions | `BEGIN IMMEDIATE / COMMIT / ROLLBACK` | Initialisation, création des identifiants et suppression d'un agenda avec ses événements sans écriture partielle |
-| Sessions | `express-session`, cookie HttpOnly et SameSite=Lax | Sessions de 8 heures en mémoire pour le sprint local ; reconnexion après redémarrage |
-| Récurrence | `RecurrenceService` | Calcul des occurrences séparé du modèle `Evenement` : modèle plus léger, logique testable et facile à faire évoluer |
-| Évolution du schéma | Fichiers de migration SQL | Historique clair des changements, sans modifier le schéma initial ; application simple sur la base de chaque membre |
+| Calcul des occurrences | Service `RecurrenceService` | Logique séparée du modèle `Evenement` : modèle plus léger, calcul testable isolément |
+| Stockage de la récurrence | Deux colonnes dans `evenement` (fréquence + date de fin) | Une seule ligne par rendez-vous ; les occurrences sont calculées, jamais stockées |
+| Dates des occurrences | Chaque occurrence est calculée à partir de la date initiale, en UTC | Pas de dérive cumulée ; un 31 du mois devient le dernier jour des mois plus courts, un 29 février devient le 28 les années non bissextiles |
+| Recherche | Filtrage SQL des candidats, puis vérification des occurrences en JavaScript | SQL filtre le texte, les agendas et les dates simples ; les récurrences sont vérifiées occurrence par occurrence |
+| Partage | Table d'association `partage` (agenda, utilisateur) | Relation plusieurs-à-plusieurs, sans dupliquer les agendas |
+| Droits d'accès | `AgendaRepository.hasAccess(id, userId)` : propriétaire **ou** partage | Une seule règle réutilisée par les contrôleurs d'agendas et d'événements |
+| Évolution du schéma | Fichiers de migration SQL dans `backend/storage/migrations/` | Historique clair des changements, appliqué automatiquement sur la base existante de chaque membre sans perte de données |
 
-La connexion SQLite est synchrone et partagée dans le processus serveur. Les méthodes des repositories restent asynchrones pour conserver une interface utilisable avec `await`. Une transaction doit recevoir une fonction synchrone : effectuer les opérations asynchrones, comme le hachage, avant la transaction.
+## 3. Diagramme de classes : éléments ajoutés ou modifiés
 
-## 3. Diagramme de classes
-
-Le diagramme représente le stockage et les contrôleurs implémentés. La classe JavaScript `Evenement` représente un événement et correspond à la table **evenement**.
+Seuls les membres nouveaux sont détaillés ; les classes inchangées depuis le sprint 0 (`User`, `UserController`, `AuthController`) n'apparaissent que si elles participent à une nouvelle relation.
 
 ```mermaid
 classDiagram
 direction LR
-class User {
-    +Number id
-    +String username
-    -String passwordHash
-    +Date createdAt
-    +verifyPassword(plain)
-    +toRecord()
-    +toJSON()
-}
-class Agenda {
-    +String id
-    +String name
-    +String color
-    +Number ownerId
-    +Date createdAt
-    +rename(name)
-    +changeColor(color)
-    +toJSON()
-}
 class Evenement {
-    +String id
-    +String agendaId
-    +String title
-    +Date start
-    +Date end
-    +String location
-    +String description
+    <<modifié>>
     +String recurrenceFrequency
-    +Date recurrenceEndDate
-    +rename(title)
-    +newSchedule(start, end)
-    +setDescription(text)
-    +setLocation(text)
-    +getDuration()
-    +toJSON()
+    +String recurrenceEndDate
 }
 class RecurrenceService {
-    +computeOccurrences(evenement)
+    <<nouveau>>
+    +genererOccurrences(evenement, limiteMax)$
+    +calculerDebutOccurrence(debutInitial, frequence, index)$
+}
+class RechercheService {
+    <<nouveau>>
+    +evenementChevauchePeriode(evenement, startDate, endDate)
 }
 class SQLiteDatabase {
-    +String filePath
-    +DatabaseSync connection
-    +SQLiteDatabase(filePath)
-    +initializeSchema()
-    +get(sql, params)
-    +all(sql, params)
-    +run(sql, params)
-    +transaction(action)
-    +close()
-}
-class UserRepository {
-    +SQLiteDatabase db
-    +UserRepository(db)
-    +findById(id)
-    +findByUsername(username)
-    +create(user)
+    <<modifié>>
+    +migrateEventRecurrence()
+    +migrateYearlyRecurrence()
 }
 class AgendaRepository {
-    +SQLiteDatabase db
-    +AgendaRepository(db)
-    +findById(id)
-    +findByOwner(ownerId)
-    +create(agenda)
-    +update(agenda)
-    +delete(id)
+    <<modifié>>
+    +hasAccess(id, userId)
+    +findAccessible(userId)
+    +findPartages(agendaId)
+    +addPartage(agendaId, userId)
+    +removePartage(agendaId, username)
 }
 class EvenementRepository {
-    +SQLiteDatabase db
-    +EvenementRepository(db)
-    +findById(id)
-    +findByAgenda(agendaId)
-    +findByOwner(ownerId)
-    +create(evenement)
-    +update(id, evenement)
-    +delete(id)
+    <<modifié>>
+    +findAccessible(userId)
+    +findSearchCandidates(ownerId, criteres)
 }
-class UserController {
-    +register(req, res)
-    +getCurrentUser(req, res)
-}
-class AuthController {
-    +login(req, res, next)
-    +logout(req, res, next)
-}
-UserController --> UserRepository
-AuthController --> UserRepository
 class AgendaController {
-    +getAgendas(req, res)
-    +getAgenda(req, res)
-    +createAgenda(req, res)
-    +updateAgenda(req, res)
-    +deleteAgenda(req, res)
+    <<modifié>>
+    +getPartages(req, res)
+    +addPartage(req, res)
+    +removePartage(req, res)
 }
 class EvenementController {
-    +getEvenements(req, res)
-    +createEvenement(req, res)
-    +updateEvenement(req, res)
-    +deleteEvenement(req, res)
+    <<modifié>>
+    +getOccurrences(req, res)
+    +searchEvenements(req, res)
 }
-AgendaController --> AgendaRepository
-EvenementController --> AgendaRepository
+class User
+class Agenda
+EvenementController --> RecurrenceService
+EvenementController --> RechercheService
+RechercheService --> RecurrenceService
 EvenementController --> EvenementRepository
-User "1" --> "0..*" Agenda : possède
-Agenda "1" --> "0..*" Evenement : contient
-UserRepository --> SQLiteDatabase : table user
-AgendaRepository --> SQLiteDatabase : table agenda
-EvenementRepository --> SQLiteDatabase : table evenement
-UserRepository ..> User : reconstruit
-AgendaRepository ..> Agenda : reconstruit
-EvenementRepository ..> Evenement : reconstruit
+EvenementController --> AgendaRepository
+AgendaController --> AgendaRepository
+AgendaController --> UserRepository
 RecurrenceService ..> Evenement : calcule les occurrences
+User "0..*" -- "0..*" Agenda : partage
+AgendaRepository --> SQLiteDatabase : tables agenda, partage
 ```
 
-Les repositories reçoivent la même connexion par défaut via `getDatabase()`. Les contrôleurs utilisent la connexion placée dans `app.locals.database` au démarrage ; les tests peuvent fournir une base distincte. Une recherche absente renvoie `null` ; une liste vide renvoie `[]`. `create()` renvoie l'objet créé, `update()` l'objet relu ou `null`, `delete()` un booléen. Les contrôleurs valident les données et les droits d'accès. Les erreurs non traitées sont transmises au middleware `errorHandler`.
+Le constructeur de `Evenement` reçoit désormais `recurrenceFrequency` et `recurrenceEndDate` et les valide : fréquence `daily`, `weekly`, `monthly` ou `yearly` ; date de fin au format `AAAA-MM-JJ`, non antérieure au jour de début ; une date de fin sans fréquence est refusée. Les deux attributs apparaissent dans `toJSON()`.
 
-### Diagramme de séquence : événement récurrent (sprint 1)
+Les méthodes `findByOwner()` existent toujours, mais les contrôleurs utilisent maintenant `findAccessible()` et `hasAccess()` pour inclure les agendas partagés.
+
+## 4. Diagrammes de séquence
+
+### Récurrence (US-09)
 
 ```mermaid
 sequenceDiagram
@@ -186,124 +110,193 @@ sequenceDiagram
     Note over U,DB: Création d'un événement récurrent
     U->>F: Remplit le formulaire (titre, dates, fréquence, fin de récurrence)
     F->>C: POST /api/agendas/:agendaId/evenements
-    C->>AR: findById(agendaId)
-    AR->>DB: SELECT agenda
-    DB-->>AR: agenda
-    AR-->>C: agenda
-    alt Agenda absent ou d'un autre utilisateur
+    C->>AR: findById(agendaId) puis hasAccess(agendaId, userId)
+    AR->>DB: SELECT agenda (propriétaire ou partage)
+    AR-->>C: agenda / accès
+    alt Agenda absent ou inaccessible
         C-->>F: 404
     else Fréquence ou date de fin invalide
         C-->>F: 400
     else Données valides
         C->>ER: create(evenement)
         ER->>DB: INSERT evenement (avec recurrence_frequency, recurrence_end_date)
-        DB-->>ER: OK
         ER-->>C: evenement créé
         C-->>F: 201 + événement
     end
 
     Note over U,DB: Affichage des occurrences
-    F->>C: GET /api/evenements
-    C->>ER: findByOwner(userId)
-    ER->>DB: SELECT evenements de l'utilisateur
-    DB-->>ER: lignes
-    ER-->>C: événements
-    loop Pour chaque événement récurrent
-        C->>RS: computeOccurrences(evenement)
-        RS-->>C: occurrences jusqu'à la date de fin
+    F->>C: GET /api/evenements/:id/occurrences (pour chaque événement récurrent)
+    C->>ER: findById(id)
+    ER->>DB: SELECT evenement
+    ER-->>C: événement
+    C->>AR: hasAccess(agendaId, userId)
+    alt Événement absent ou inaccessible
+        C-->>F: 404
+    else Accès autorisé
+        C->>RS: genererOccurrences(evenement, 100)
+        RS-->>C: occurrences jusqu'à la date de fin (100 au maximum)
+        C-->>F: 200 + { evenementId, occurrences: [{ start, end }] }
+        F-->>U: Occurrences affichées dans le calendrier
     end
-    C-->>F: 200 + événements et occurrences
-    F-->>U: Occurrences affichées dans le calendrier
 ```
 
-## 4. Schéma relationnel
+### Partage (US-11 / US-12)
 
-Le SQL exécutable est dans `backend/storage/schema.sql`.
+```mermaid
+sequenceDiagram
+    actor P as Propriétaire
+    participant F as Front (navigateur)
+    participant C as AgendaController
+    participant AR as AgendaRepository
+    participant UR as UserRepository
+    participant DB as SQLite
 
-| Table | Colonnes |
-|-------|----------|
-| `user` | `id` INTEGER PK AUTOINCREMENT, `username` UNIQUE, `password_hash`, `created_at` |
-| `agenda` | `id` PK, `name`, `color`, `owner_id` INTEGER FK vers `user.id`, `created_at` |
-| `evenement` | `id` PK, `agenda_id` FK vers `agenda.id`, `title`, `start`, `end`, `location`, `description`, `recurrence_frequency`, `recurrence_end_date` |
+    P->>F: Saisit le nom d'un utilisateur
+    F->>C: POST /api/agendas/:id/partages { username }
+    C->>AR: findById(id)
+    alt Agenda absent ou non possédé
+        C-->>F: 404
+    else Propriétaire
+        C->>UR: findByUsername(username)
+        alt Utilisateur inconnu
+            C-->>F: 404
+        else Utilisateur = propriétaire
+            C-->>F: 400
+        else Utilisateur trouvé
+            C->>AR: addPartage(agendaId, userId)
+            AR->>DB: INSERT INTO partage ... ON CONFLICT DO NOTHING
+            alt Déjà partagé
+                C-->>F: 409
+            else Partage créé
+                C-->>F: 201 + { id, username }
+            end
+        end
+    end
+    Note over P,DB: Le retrait (DELETE /api/agendas/:id/partages/:username) supprime la ligne : l'utilisateur perd l'accès immédiatement.
+```
 
-Les identifiants utilisateurs et les références `owner_id` sont des INTEGER. Les identifiants d'agendas et d'événements ainsi que les dates sont stockés en TEXT ; les repositories écrivent les dates en ISO 8601 UTC et reconstruisent les objets métier à la lecture. Les noms SQL en snake_case sont convertis en attributs JavaScript camelCase.
+### Recherche (US-10)
 
-Les tables sont STRICT. Le schéma impose des noms/titres non vides, une couleur hexadécimale et une fin postérieure au début. Pour un événement récurrent, la fréquence doit valoir `daily`, `weekly` ou `monthly` et la date de fin de récurrence doit être valide ; un événement ponctuel laisse ces deux colonnes vides. Deux index accélèrent la recherche des agendas d'un utilisateur et des événements d'un agenda.
+```mermaid
+sequenceDiagram
+    participant F as Client
+    participant C as EvenementController
+    participant ER as EvenementRepository
+    participant RS as RechercheService
+    participant DB as SQLite
 
-Les clés étrangères utilisent `ON DELETE RESTRICT` : SQLite refuse de supprimer directement un agenda qui contient encore des événements. La suppression depuis l'application reste possible : `AgendaRepository.delete()` supprime d'abord les événements, puis l'agenda, dans une même transaction. En cas d'erreur, les deux opérations sont annulées. La suppression d'un utilisateur ayant des agendas reste refusée par SQLite ; aucune route de suppression de compte n'est exposée.
+    F->>C: GET /api/evenements/search?q=&agendaIds=&startDate=&endDate=
+    alt Paramètre invalide (q > 200 caractères, date invalide, début > fin, > 100 agendas)
+        C-->>F: 400
+    else Paramètres valides
+        C->>ER: findSearchCandidates(userId, critères)
+        ER->>DB: SELECT evenements accessibles filtrés (texte, agendas, période)
+        ER-->>C: candidats
+        loop Pour chaque candidat
+            C->>RS: evenementChevauchePeriode(evenement, startDate, endDate)
+        end
+        C-->>F: 200 + événements retenus
+    end
+```
 
-Exemples :
+## 5. Modifications de la base de données
+
+### Changements du schéma
+
+| Changement | Fichier | Détail |
+|------------|---------|--------|
+| Nouvelle table `partage` | `schema.sql` | `agenda_id` TEXT FK vers `agenda.id` `ON DELETE CASCADE`, `user_id` INTEGER FK vers `user.id` `ON DELETE CASCADE`, PK (`agenda_id`, `user_id`), table STRICT |
+| Nouvel index `partage_user_idx` | `schema.sql` | Sur `partage(user_id)` : retrouve vite les agendas partagés avec un utilisateur |
+| Colonnes de récurrence | `migrations/004-event-recurrence.sql` | `recurrence_frequency` TEXT (`NULL`, `daily`, `weekly`, `monthly`) et `recurrence_end_date` TEXT (`NULL` ou date `AAAA-MM-JJ` valide) ajoutées à `evenement` |
+| Récurrence annuelle | `migrations/005-yearly-recurrence.sql` | Recréation de `evenement` (copie des données, suppression, renommage, recréation de `evenement_agenda_start_idx`) pour ajouter `yearly` à la contrainte CHECK |
+| Rangement | `migrations/migrate-user-ids.sql` | Le script de conversion des identifiants utilisateurs du sprint 0 a été déplacé dans `migrations/`, sans modification |
+
+Structure finale de `evenement` : `id`, `agenda_id`, `title`, `start`, `end`, `location`, `description`, `recurrence_frequency`, `recurrence_end_date`.
+
+Le schéma ne lie pas les deux colonnes de récurrence entre elles ; c'est le modèle `Evenement` qui refuse une date de fin sans fréquence. Un rendez-vous ponctuel laisse les deux colonnes à `NULL`.
+
+Grâce à `ON DELETE CASCADE`, les partages d'un agenda supprimé disparaissent automatiquement : `AgendaRepository.delete()` continue de supprimer uniquement les événements puis l'agenda, dans une même transaction.
+
+### Application des migrations
+
+`SQLiteDatabase` applique désormais, après `schema.sql` :
+
+1. `migrateEventRecurrence()` : exécute uniquement les `ADD COLUMN` de la migration 004 dont la colonne est absente ;
+2. `migrateYearlyRecurrence()` : si la définition de `evenement` ne contient pas encore `'yearly'`, exécute la migration 005 dans une transaction, clés étrangères désactivées, puis vérifie `PRAGMA foreign_key_check`.
+
+`PRAGMA user_version` reste à 3 : ces migrations sont détectées à partir de la structure de la table `evenement`, pas d'un numéro de version. Les bases existantes des membres de l'équipe sont mises à jour au premier démarrage, sans perte de données.
+
+### Nouvelles requêtes
+
+Accès aux agendas possédés ou partagés (`hasAccess`, `findAccessible`) :
+
 ```sql
-SELECT * FROM agenda WHERE owner_id = ?;
-SELECT * FROM evenement WHERE agenda_id = ? ORDER BY start, id;
 SELECT evenement.*
 FROM evenement
 JOIN agenda ON agenda.id = evenement.agenda_id
-WHERE agenda.owner_id = ?;
+WHERE agenda.owner_id = ? OR EXISTS (
+    SELECT 1 FROM partage
+    WHERE partage.agenda_id = agenda.id AND partage.user_id = ?
+)
+ORDER BY evenement.start, evenement.id;
 ```
 
-Les clés étrangères garantissent les relations. Les contrôleurs vérifient aussi que l'utilisateur connecté possède l'agenda concerné : une relation valide ne constitue pas une autorisation. Un événement peut être déplacé uniquement vers un autre agenda du même utilisateur.
+Recherche (`findSearchCandidates`) : la même condition d'accès, complétée selon les critères fournis par :
 
-## 5. Initialisation et données persistées
+- texte : `instr(lower(title|description|location), lower(?)) > 0` sur l'un des trois champs ;
+- agendas : `evenement.agenda_id IN (?, ?, …)` ;
+- période : `evenement.end > début` (ou événement récurrent) et `evenement.start < lendemain de la fin`. La fin de période est inclusive.
 
-Au démarrage :
+Les candidats récurrents sont ensuite filtrés par `RechercheService`, qui vérifie qu'au moins une occurrence chevauche la période.
 
-1. `SQLiteDatabase` ouvre ou crée `data/chronosquad.sqlite`, active les clés étrangères, effectue les migrations nécessaires et initialise les tables.
-2. `initializeDatabase()` vérifie `PRAGMA user_version`. Une base déjà initialisée conserve ses données. Une base nouvelle est initialisée une seule fois.
-3. `seedTestData()` exécute encore `backend/storage/test-data.sql` : un compte `sqlite_demo` et son agenda `test-agenda` sont ajoutés s'ils n'existent pas. Cette insertion ne dépend pas d'une route de démonstration. Si ces lignes sont supprimées, elles sont recréées au prochain démarrage.
-4. La connexion est placée dans `app.locals.database`, puis Express écoute sur le port 3000.
+## 6. Règles métier ajoutées
 
-La version actuelle du schéma est 4 : la migration `004-event-recurrence.sql` ajoute les colonnes de récurrence à la table `evenement`. Les migrations conservent les comptes, leurs hashes et les relations avec les agendas et les événements des anciennes bases.
+- **Récurrence :** sans date de fin, `RecurrenceService` ne renvoie que l'occurrence initiale. Avec une date de fin (incluse), il renvoie les occurrences jusqu'à cette date, 100 au maximum par appel.
+- **Droits d'accès :** un utilisateur à qui un agenda est partagé peut consulter et modifier l'agenda (nom, couleur) et créer, modifier ou supprimer ses événements. Seul le propriétaire peut supprimer l'agenda et gérer ses partages. Sans accès, la réponse est 404, comme au sprint 0.
+- **Déplacement d'un événement :** autorisé vers tout agenda accessible à l'utilisateur (possédé ou partagé).
 
-Les anciens fichiers `users.json`, `agendas.json` et `evenements.json` ont été supprimés du projet. Le code d'import historique existe encore : lors de l'initialisation d'une base nouvelle, les fichiers absents correspondent à des listes vides. Ils ne sont donc pas nécessaires au fonctionnement. Si des fichiers historiques sont fournis, leur import reste transactionnel et les mots de passe en clair sont hachés.
+## 7. Routes API ajoutées ou modifiées
 
-Toutes les données utilisées par l'application sont enregistrées dans SQLite. La base locale est exclue de Git. Il faut conserver `data/chronosquad.sqlite` pour retrouver les comptes, agendas et événements après un redémarrage. Les sessions sont en mémoire : il faut se reconnecter après l'arrêt du serveur.
-
-## 6. Lancement et routes disponibles
-
-```bash
-npm install
-npm start
-npm test
-```
-
-- `npm start` : initialise SQLite et démarre Express sur le port 3000.
-- `npm run dev` : même lancement avec surveillance des sources.
-- `npm run test:storage` : tests SQLite isolés, sans modifier la base de l'application.
-- `npm run test:server` : tests HTTP / EJS.
-- `npm run test:auth` : tests de l'inscription, de la connexion et des sessions.
-
-Des tests vérifient aussi les répétitions quotidiennes, hebdomadaires et mensuelles, ainsi que les cas particuliers liés aux dates.
-
-Le serveur écoute sur `0.0.0.0:3000`. Sur le PC serveur, ouvrir `http://localhost:3000`. Depuis un autre PC du réseau local, utiliser `http://<adresse-ip-du-serveur>:3000`, à condition que le pare-feu autorise la connexion. Pour arrêter le serveur lancé dans le terminal, utiliser `Ctrl+C`. Pendant le développement, `npm run dev` recharge le serveur après une modification du code.
-
-`GET /api/health` renvoie `{ "status": "ok" }` pour vérifier que le serveur répond.
-
-Un ancien test dans `ServerTest.js` attend encore une route de démonstration supprimée. Ce test reste à adapter ; son échec ne signifie pas que les routes métier sont indisponibles.
-
-Les routes d'authentification correspondent au front existant : `POST /api/users`, `GET /api/users/me`, `POST /api/auth/login` et `POST /api/auth/logout`.
-
-Les raccordements métier actuels sont :
+Nouvelles routes (session obligatoire, 401 sinon) :
 
 | Méthode | URL | Réponse |
 |---------|-----|---------|
-| GET | `/api/agendas` | Tableau des agendas de l'utilisateur |
-| GET | `/api/agendas/:id` | Agenda de l'utilisateur ou 404 |
-| POST | `/api/agendas` | 201 agenda créé avec `{ name, color? }` |
-| PUT | `/api/agendas/:id` | 200 agenda modifié avec `{ name, color }` |
-| DELETE | `/api/agendas/:id` | 204 sans contenu ; supprime aussi les événements de l'agenda |
-| GET | `/api/evenements` | Tableau des événements des agendas de l'utilisateur |
-| POST | `/api/agendas/:agendaId/evenements` | 201 événement créé avec `{ title, start, end, location?, description?, recurrenceFrequency?, recurrenceEndDate? }` |
-| PUT | `/api/evenements/:id` | 200 événement modifié avec `{ title, start, end, agendaId?, location?, description?, recurrenceFrequency?, recurrenceEndDate? }` |
-| DELETE | `/api/evenements/:id` | 204 sans contenu |
+| GET | `/api/agendas/:id/partages` | Utilisateurs avec qui l'agenda est partagé (propriétaire uniquement) |
+| POST | `/api/agendas/:id/partages` | 201 `{ id, username }` avec `{ username }` ; 400 soi-même, 404 utilisateur inconnu, 409 déjà partagé |
+| DELETE | `/api/agendas/:id/partages/:username` | 204 ; 404 partage absent |
+| GET | `/api/evenements/:id/occurrences` | `{ evenementId, occurrences: [{ start, end }] }` |
+| GET | `/api/evenements/search` | Événements accessibles filtrés par `q`, `agendaIds` (`a1,a2` ou paramètre répété), `startDate`, `endDate` (`AAAA-MM-JJ`) |
 
-Ces routes exigent une session (401 sinon). Le propriétaire vient de `req.user.id`,
-jamais du corps envoyé par le client. Consulter un agenda d'un autre utilisateur
-ou y créer un événement renvoie 404. Les champs invalides renvoient 400.
-Les nouveaux identifiants d'agendas et d'événements sont des chiffres stockés
-comme chaînes, compatibles avec les IDs déjà utilisés dans le front.
-Les générations d'identifiants et insertions sont groupées dans une transaction SQLite.
-Le nom SQL `evenement` n'impose aucun renommage des URL `/api/evenements` du front.
-Les boutons du front utilisent ces routes pour modifier et supprimer les agendas et les événements. Après une réponse réussie, les listes et le calendrier sont actualisés. Les suppressions demandent une confirmation dans l'interface.
+Routes existantes modifiées :
+
+| Méthode | URL | Changement |
+|---------|-----|------------|
+| GET | `/api/agendas` | Inclut les agendas partagés ; chaque agenda porte `ownerName` et `sharedWith` (liste vide si l'utilisateur n'en est pas propriétaire) |
+| GET / PUT | `/api/agendas/:id` | Accessible aussi aux utilisateurs avec qui l'agenda est partagé |
+| GET | `/api/evenements` | Inclut les événements des agendas partagés |
+| POST | `/api/agendas/:agendaId/evenements` | Accepte `recurrenceFrequency?` et `recurrenceEndDate?` ; possible dans un agenda partagé |
+| PUT / DELETE | `/api/evenements/:id` | `PUT` accepte `recurrenceFrequency?` et `recurrenceEndDate?` ; les deux routes sont possibles dans un agenda partagé |
+
+Le client `public/js/api.js` expose les nouvelles fonctions `getPartages`, `addPartage`, `removePartage` et `getOccurrences`. La recherche de l'interface filtre actuellement les événements déjà chargés côté navigateur ; la route `/api/evenements/search` est disponible et testée, mais n'est pas encore appelée par le front.
+
+## 8. Tests ajoutés
+
+| Fichier | Type | Contenu |
+|---------|------|---------|
+| `RechercheRepositoryTest.js` | `node:test`, base en mémoire | Requête SQL des candidats : texte, agendas, période, isolation des utilisateurs |
+| `RechercheControllerTest.js` | `node:test`, base en mémoire | Validation des paramètres (400), filtrage des occurrences, fins de mois et années bissextiles |
+| `RechercheRoutesTest.js` | `node:test`, serveur HTTP | Route `/api/evenements/search` de bout en bout, dont le refus sans session (401) |
+| `test-recurrence-service.js` | Script avec assertions | Occurrences quotidiennes, hebdomadaires, mensuelles (31 janvier) et annuelles (29 février) |
+| `test-recurrence-integration.js` | Script avec assertions | Enregistrement et relecture d'un événement annuel, puis calcul de ses 3 occurrences |
+| `EvenementTest.js` | Script de démonstration | Affiche un événement hebdomadaire et ses occurrences, sans assertion |
+| `SQLiteTest.js` | `node:test` (modifié) | Liste des tables mise à jour avec `partage` |
+
+Ces fichiers ne font pas partie de `npm test`. Ils se lancent avec `node --test backend/tests/<fichier>` (ou `node backend/tests/<fichier>` pour les scripts). Attention : `test-recurrence-integration.js` utilise la base de l'application (`data/chronosquad.sqlite`) et nécessite qu'elle contienne au moins un agenda. L'événement de test est supprimé à la fin, mais le fichier de la base est quand même réécrit.
+
+## 9. Points restant à traiter
+
+- `data/chronosquad.sqlite` est encore suivi par Git. `.gitignore` exclut `data/`, mais il faut retirer le fichier du dépôt avec `git rm --cached data/chronosquad.sqlite`.
+- Brancher la recherche du front sur `GET /api/evenements/search`.
+- Ajouter les nouveaux tests au script `npm test` et faire utiliser une base en mémoire à `test-recurrence-integration.js`.
 
 Documentation officielle : [SQLite dans Node.js](https://nodejs.org/api/sqlite.html).
