@@ -226,7 +226,7 @@ Grâce à `ON DELETE CASCADE`, les partages d'un agenda supprimé disparaissent 
 
 `PRAGMA user_version` reste à 3 : ces migrations sont détectées à partir de la structure de la table `evenement`, pas d'un numéro de version. Les bases existantes des membres de l'équipe sont mises à jour au premier démarrage, sans perte de données.
 
-`data/chronosquad.sqlite` n'est plus suivi par Git : le fichier a été retiré du dépôt (`git rm --cached`) et `.gitignore` exclut le dossier `data/`. Chaque membre garde sa propre base locale, créée ou mise à jour automatiquement au démarrage.
+`data/chronosquad.sqlite` n'est plus suivi par Git : le fichier a été retiré du dépôt (`git rm --cached`) et `.gitignore` exclut le dossier `data/`. Une copie partagée de la base de l'équipe est versionnée dans `backend/storage/seed/chronosquad.sqlite`. Si la base locale est absente au démarrage, `SQLiteDatabase` la recrée à partir de cette copie, puis applique les migrations : les comptes, agendas, événements et partages existants sont conservés. `npm run db:restore` remplace une base locale existante par cette copie, après avoir sauvegardé l'ancienne sous un nom daté.
 
 ### Nouvelles requêtes
 

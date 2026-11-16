@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node backend/server.js",
     "dev": "node --watch backend/server.js",
+    "db:restore": "node backend/storage/restoreDatabase.js",
     "test:server": "node --test backend/tests/ServerTest.js",
     "test:storage": "node --test backend/tests/SQLiteTest.js",
     "test:auth": "node --test backend/tests/AuthTest.js",
