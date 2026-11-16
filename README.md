@@ -41,16 +41,6 @@ Créer un compte, puis se connecter pour créer, consulter, modifier et supprime
 
 Les données sont enregistrées automatiquement dans `data/chronosquad.sqlite`. Aucun serveur de base de données supplémentaire n'est nécessaire. Conserver ce fichier pour garder les données.
 
-Ce fichier n'est plus suivi par Git. Si `data/chronosquad.sqlite` est absent (nouveau clone, ou fichier supprimé par un `git pull`), `npm start` le recrée à partir de la copie partagée de l'équipe, `backend/storage/seed/chronosquad.sqlite` : les comptes existants fonctionnent à nouveau.
-
-Si le serveur a déjà créé une base vide et que vos comptes n'apparaissent plus, arrêtez le serveur puis lancez :
-
-```bash
-npm run db:restore
-```
-
-L'ancienne base est conservée dans `data/` sous un nom daté (`chronosquad.backup-….sqlite`).
-
 Depuis un autre ordinateur du même réseau, ouvrir `http://<adresse-ip-du-serveur>:3000` en remplaçant `<adresse-ip-du-serveur>` par l'adresse IP du PC qui lance l'application.
 
 ## Équipe

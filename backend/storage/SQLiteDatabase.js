@@ -1,17 +1,11 @@
 
 import { DatabaseSync } from "node:sqlite";
-import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const defaultPath = fileURLToPath(
     new URL("../../data/chronosquad.sqlite", import.meta.url)
-);
-
-// Copie partagée de la base de l'équipe (comptes, agendas, événements, partages).
-// data/ n'est plus versionné : cette copie sert de point de départ à chaque membre.
-export const seedPath = fileURLToPath(
-    new URL("./seed/chronosquad.sqlite", import.meta.url)
 );
 
 export class SQLiteDatabase {
@@ -20,13 +14,6 @@ export class SQLiteDatabase {
 
         if (this.filePath !== ":memory:") {
             mkdirSync(dirname(this.filePath), { recursive: true });
-        }
-
-        // Base locale absente (nouveau clone, ou fichier supprimé par git pull) :
-        // on repart de la copie partagée pour retrouver les comptes existants.
-        if (this.filePath === defaultPath && !existsSync(this.filePath) && existsSync(seedPath)) {
-            copyFileSync(seedPath, this.filePath);
-            console.log("Base locale absente : copie partagée restaurée depuis backend/storage/seed/.");
         }
 
         this.connection = new DatabaseSync(this.filePath);

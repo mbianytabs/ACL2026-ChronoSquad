@@ -1,10 +1,16 @@
 
-import { test } from "node:test";
 import assert from "node:assert/strict";
 import { RecurrenceService } from "../services/RecurrenceService.js";
 
 function tester(nom, action) {
-    test(nom, action);
+    try {
+        action();
+        console.log(`RÉUSSI : ${nom}`);
+    } catch (error) {
+        console.error(`ÉCHEC : ${nom}`);
+        console.error(error.message);
+        process.exitCode = 1;
+    }
 }
 
 function creerEvenement({

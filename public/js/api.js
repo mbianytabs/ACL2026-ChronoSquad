@@ -174,25 +174,6 @@ const api = {
             data
         ),
 
-    searchEvenements: ({ q, agendaIds, startDate, endDate } = {}) => {
-        const params = new URLSearchParams();
-
-        if (q) params.set('q', q);
-        if (agendaIds && agendaIds.length > 0) {
-            params.set('agendaIds', agendaIds.join(','));
-        }
-        if (startDate) params.set('startDate', startDate);
-        if (endDate) params.set('endDate', endDate);
-
-        const query = params.toString();
-
-        return request(
-            'GET',
-            '/api/evenements/search'
-            + (query ? '?' + query : '')
-        );
-    },
-
     getOccurrences: (id) =>
         request(
             'GET',

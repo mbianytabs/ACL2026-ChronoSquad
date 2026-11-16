@@ -46,33 +46,6 @@ const eventTitle = document.getElementById('event-title');
 const eventWhen = document.getElementById('event-when');
 const eventLocationRow = document.getElementById('event-location-row');
 const eventLocation = document.getElementById('event-location');
-const eventRecurrenceRow = document.getElementById('event-recurrence-row');
-const eventRecurrence = document.getElementById('event-recurrence');
-
-const RECURRENCE_LABELS = {
-    daily: 'Tous les jours',
-    weekly: 'Toutes les semaines',
-    monthly: 'Tous les mois',
-    yearly: 'Tous les ans'
-};
-
-function formatRecurrence(ev) {
-    const label = RECURRENCE_LABELS[ev.recurrenceFrequency];
-
-    if (!label) return '';
-
-    if (!ev.recurrenceEndDate) return label;
-
-    const end = new Date(ev.recurrenceEndDate + 'T12:00:00');
-
-    return label
-        + ' jusqu’au '
-        + end.toLocaleDateString('fr-FR', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-        });
-}
 const eventAgenda = document.getElementById('event-agenda');
 const eventDescription = document.getElementById('event-description');
 const eventError = document.getElementById('event-error');
@@ -475,48 +448,8 @@ function renderSearchResults(matches) {
     });
 }
 
-let searchRequestId = 0;
-
-function shiftDateInput(value, days) {
-    const date = new Date(value + 'T00:00:00.000Z');
-    date.setUTCDate(date.getUTCDate() + days);
-    return date.toISOString().slice(0, 10);
-}
-
-/*
- * L'agenda et la date sont filtrés par le serveur (GET /api/evenements/search),
- * qui vérifie aussi les occurrences des événements récurrents.
- * Le texte reste filtré dans le navigateur : la comparaison ignore les accents
- * et inclut le nom de l'agenda, ce que la recherche SQL ne fait pas.
- */
-async function fetchSearchEventIds(criteria) {
-    if (!criteria.agendaId && !criteria.date) {
-        return null;
-    }
-
-    const params = {};
-
-    if (criteria.agendaId) {
-        params.agendaIds = [criteria.agendaId];
-    }
-
-    if (criteria.date) {
-        // Le serveur raisonne en jours UTC : on élargit d'un jour de chaque côté,
-        // le jour local exact est ensuite vérifié par eventMatchesSearch().
-        params.startDate = shiftDateInput(criteria.date, -1);
-        params.endDate = shiftDateInput(criteria.date, 1);
-    }
-
-    const results = await api.searchEvenements(params);
-
-    return new Set(
-        results.map((ev) => String(ev.id))
-    );
-}
-
-async function performSearch() {
+function performSearch() {
     const criteria = getSearchCriteria();
-    const requestId = ++searchRequestId;
 
     if (!hasSearchCriteria(criteria)) {
         if (searchResults) {
@@ -526,35 +459,11 @@ async function performSearch() {
         return;
     }
 
-    let allowedIds = null;
-
-    try {
-        allowedIds = await fetchSearchEventIds(criteria);
-    } catch (err) {
-        if (err.status === 401) {
-            goToLogin();
-            return;
-        }
-        // Serveur indisponible : on garde le filtrage local seul.
-        allowedIds = null;
-    }
-
-    // Une recherche plus récente a été lancée entre-temps.
-    if (requestId !== searchRequestId) {
-        return;
-    }
-
     const matches =
         calendarEvenements
             .filter(
                 (ev) =>
-                    (
-                        !allowedIds
-                        || allowedIds.has(
-                            String(ev.recurringEventId || ev.id)
-                        )
-                    )
-                    && eventMatchesSearch(
+                    eventMatchesSearch(
                         ev,
                         criteria
                     )
@@ -574,9 +483,6 @@ async function performSearch() {
 }
 
 function resetSearch() {
-    // Ignore la réponse d'une recherche encore en cours.
-    searchRequestId++;
-
     if (searchInput) searchInput.value = '';
     if (searchTitle) searchTitle.value = '';
     if (searchDate) searchDate.value = '';
@@ -1430,9 +1336,7 @@ function createEventBlock(
         (
             minutes < 50
                 ? ' compact'
-                : minutes < 75
-                    ? ' short'
-                    : ''
+                : ''
         );
 
     block.dataset.searchEventKey =
@@ -1674,14 +1578,6 @@ function openEvent(
 
     eventLocationRow.hidden =
         !ev.location;
-
-    if (eventRecurrenceRow && eventRecurrence) {
-        eventRecurrence.textContent =
-            formatRecurrence(ev);
-
-        eventRecurrenceRow.hidden =
-            !eventRecurrence.textContent;
-    }
 
     eventAgenda.textContent =
         agenda.name;
