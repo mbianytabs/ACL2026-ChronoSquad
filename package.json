@@ -9,7 +9,9 @@
     "test:server": "node --test backend/tests/ServerTest.js",
     "test:storage": "node --test backend/tests/SQLiteTest.js",
     "test:auth": "node --test backend/tests/AuthTest.js",
-    "test": "node --test backend/tests/ServerTest.js backend/tests/SQLiteTest.js backend/tests/AuthTest.js"
+    "test:recurrence": "node --test backend/tests/EvenementTest.js backend/tests/test-recurrence-service.js backend/tests/test-recurrence-integration.js",
+    "test:recherche": "node --test backend/tests/RechercheRepositoryTest.js backend/tests/RechercheControllerTest.js backend/tests/RechercheRoutesTest.js",
+    "test": "node --test backend/tests/ServerTest.js backend/tests/SQLiteTest.js backend/tests/AuthTest.js backend/tests/EvenementTest.js backend/tests/test-recurrence-service.js backend/tests/test-recurrence-integration.js backend/tests/RechercheRepositoryTest.js backend/tests/RechercheControllerTest.js backend/tests/RechercheRoutesTest.js"
   },
   "engines": {
     "node": ">=22.13.0"

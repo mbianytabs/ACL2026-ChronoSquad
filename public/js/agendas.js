@@ -448,8 +448,48 @@ function renderSearchResults(matches) {
     });
 }
 
-function performSearch() {
+let searchRequestId = 0;
+
+function shiftDateInput(value, days) {
+    const date = new Date(value + 'T00:00:00.000Z');
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+}
+
+/*
+ * L'agenda et la date sont filtrés par le serveur (GET /api/evenements/search),
+ * qui vérifie aussi les occurrences des événements récurrents.
+ * Le texte reste filtré dans le navigateur : la comparaison ignore les accents
+ * et inclut le nom de l'agenda, ce que la recherche SQL ne fait pas.
+ */
+async function fetchSearchEventIds(criteria) {
+    if (!criteria.agendaId && !criteria.date) {
+        return null;
+    }
+
+    const params = {};
+
+    if (criteria.agendaId) {
+        params.agendaIds = [criteria.agendaId];
+    }
+
+    if (criteria.date) {
+        // Le serveur raisonne en jours UTC : on élargit d'un jour de chaque côté,
+        // le jour local exact est ensuite vérifié par eventMatchesSearch().
+        params.startDate = shiftDateInput(criteria.date, -1);
+        params.endDate = shiftDateInput(criteria.date, 1);
+    }
+
+    const results = await api.searchEvenements(params);
+
+    return new Set(
+        results.map((ev) => String(ev.id))
+    );
+}
+
+async function performSearch() {
     const criteria = getSearchCriteria();
+    const requestId = ++searchRequestId;
 
     if (!hasSearchCriteria(criteria)) {
         if (searchResults) {
@@ -459,11 +499,35 @@ function performSearch() {
         return;
     }
 
+    let allowedIds = null;
+
+    try {
+        allowedIds = await fetchSearchEventIds(criteria);
+    } catch (err) {
+        if (err.status === 401) {
+            goToLogin();
+            return;
+        }
+        // Serveur indisponible : on garde le filtrage local seul.
+        allowedIds = null;
+    }
+
+    // Une recherche plus récente a été lancée entre-temps.
+    if (requestId !== searchRequestId) {
+        return;
+    }
+
     const matches =
         calendarEvenements
             .filter(
                 (ev) =>
-                    eventMatchesSearch(
+                    (
+                        !allowedIds
+                        || allowedIds.has(
+                            String(ev.recurringEventId || ev.id)
+                        )
+                    )
+                    && eventMatchesSearch(
                         ev,
                         criteria
                     )
@@ -483,6 +547,9 @@ function performSearch() {
 }
 
 function resetSearch() {
+    // Ignore la réponse d'une recherche encore en cours.
+    searchRequestId++;
+
     if (searchInput) searchInput.value = '';
     if (searchTitle) searchTitle.value = '';
     if (searchDate) searchDate.value = '';

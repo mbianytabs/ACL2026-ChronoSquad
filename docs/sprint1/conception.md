@@ -10,7 +10,7 @@ Objectif : passer d'une gestion simple des agendas à une gestion avancée — v
 |------------|----------|-----------|
 | US-08 Visualisation | Aucune modification : `GET /api/agendas` et `GET /api/evenements` renvoient déjà toutes les données nécessaires | Sélection de plusieurs agendas ; le calendrier affiche ensemble les rendez-vous des agendas sélectionnés |
 | US-09 Récurrence | Colonnes de récurrence (migrations 004 et 005), validation dans `Evenement`, service `RecurrenceService`, route des occurrences | Champs « récurrence » et « fin de récurrence » dans le formulaire ; affichage des occurrences dans le calendrier |
-| US-10 Recherche | `EvenementRepository.findSearchCandidates()`, service `RechercheService`, route `GET /api/evenements/search` | Barre de recherche et filtres (titre, date, agenda, lieu) avec liste de résultats |
+| US-10 Recherche | `EvenementRepository.findSearchCandidates()`, service `RechercheService`, route `GET /api/evenements/search` | Barre de recherche et filtres (titre, date, agenda, lieu) avec liste de résultats ; agenda et date filtrés via la route de recherche |
 | US-11 / US-12 Partage | Table `partage`, méthodes de partage dans `AgendaRepository`, routes `/api/agendas/:id/partages`, contrôle d'accès `hasAccess()` | Panneau de partage : ajout d'un utilisateur, liste des partages, retrait d'un partage ; affichage du propriétaire des agendas partagés |
 
 ## 2. Choix techniques ajoutés
@@ -226,6 +226,8 @@ Grâce à `ON DELETE CASCADE`, les partages d'un agenda supprimé disparaissent 
 
 `PRAGMA user_version` reste à 3 : ces migrations sont détectées à partir de la structure de la table `evenement`, pas d'un numéro de version. Les bases existantes des membres de l'équipe sont mises à jour au premier démarrage, sans perte de données.
 
+`data/chronosquad.sqlite` n'est plus suivi par Git : le fichier a été retiré du dépôt (`git rm --cached`) et `.gitignore` exclut le dossier `data/`. Chaque membre garde sa propre base locale, créée ou mise à jour automatiquement au démarrage.
+
 ### Nouvelles requêtes
 
 Accès aux agendas possédés ou partagés (`hasAccess`, `findAccessible`) :
@@ -277,26 +279,31 @@ Routes existantes modifiées :
 | POST | `/api/agendas/:agendaId/evenements` | Accepte `recurrenceFrequency?` et `recurrenceEndDate?` ; possible dans un agenda partagé |
 | PUT / DELETE | `/api/evenements/:id` | `PUT` accepte `recurrenceFrequency?` et `recurrenceEndDate?` ; les deux routes sont possibles dans un agenda partagé |
 
-Le client `public/js/api.js` expose les nouvelles fonctions `getPartages`, `addPartage`, `removePartage` et `getOccurrences`. La recherche de l'interface filtre actuellement les événements déjà chargés côté navigateur ; la route `/api/evenements/search` est disponible et testée, mais n'est pas encore appelée par le front.
+Le client `public/js/api.js` expose les nouvelles fonctions `getPartages`, `addPartage`, `removePartage`, `getOccurrences` et `searchEvenements`.
+
+Dans l'interface, la recherche combine le serveur et le navigateur :
+
+- quand un agenda ou une date est choisi, le front appelle `GET /api/evenements/search` avec `agendaIds` et une période élargie d'un jour de chaque côté (le serveur raisonne en jours UTC, l'interface en jours locaux) ; le serveur renvoie les événements, récurrents compris, qui ont une occurrence dans la période ;
+- les occurrences affichées dans le calendrier sont ensuite limitées à ces événements, puis filtrées localement par texte (recherche rapide, titre, lieu) et par jour local exact ;
+- le texte n'est pas envoyé au serveur : la comparaison locale ignore les accents et inclut le nom de l'agenda, alors que `lower()` de SQLite ne traite que les lettres ASCII ;
+- si le serveur ne répond pas, le filtrage local seul est appliqué ; une réponse arrivée après une recherche plus récente est ignorée.
 
 ## 8. Tests ajoutés
 
-| Fichier | Type | Contenu |
-|---------|------|---------|
-| `RechercheRepositoryTest.js` | `node:test`, base en mémoire | Requête SQL des candidats : texte, agendas, période, isolation des utilisateurs |
-| `RechercheControllerTest.js` | `node:test`, base en mémoire | Validation des paramètres (400), filtrage des occurrences, fins de mois et années bissextiles |
-| `RechercheRoutesTest.js` | `node:test`, serveur HTTP | Route `/api/evenements/search` de bout en bout, dont le refus sans session (401) |
-| `test-recurrence-service.js` | Script avec assertions | Occurrences quotidiennes, hebdomadaires, mensuelles (31 janvier) et annuelles (29 février) |
-| `test-recurrence-integration.js` | Script avec assertions | Enregistrement et relecture d'un événement annuel, puis calcul de ses 3 occurrences |
-| `EvenementTest.js` | Script de démonstration | Affiche un événement hebdomadaire et ses occurrences, sans assertion |
-| `SQLiteTest.js` | `node:test` (modifié) | Liste des tables mise à jour avec `partage` |
+Tous les tests utilisent `node:test` et une base SQLite en mémoire : ils ne modifient jamais `data/chronosquad.sqlite`.
 
-Ces fichiers ne font pas partie de `npm test`. Ils se lancent avec `node --test backend/tests/<fichier>` (ou `node backend/tests/<fichier>` pour les scripts). Attention : `test-recurrence-integration.js` utilise la base de l'application (`data/chronosquad.sqlite`) et nécessite qu'elle contienne au moins un agenda. L'événement de test est supprimé à la fin, mais le fichier de la base est quand même réécrit.
+| Fichier | Contenu |
+|---------|---------|
+| `EvenementTest.js` | Récurrence dans le modèle : `toJSON()`, refus d'une fréquence inconnue, d'une date de fin mal formée, invalide, antérieure au début ou sans fréquence ; occurrences hebdomadaires |
+| `test-recurrence-service.js` | Occurrences quotidiennes, hebdomadaires, mensuelles (31 janvier) et annuelles (29 février), limite et cas d'erreur |
+| `test-recurrence-integration.js` | Enregistrement et relecture d'un événement annuel, calcul de ses 3 occurrences ; contrainte CHECK sur la fréquence |
+| `RechercheRepositoryTest.js` | Requête SQL des candidats : texte, agendas, période, isolation des utilisateurs |
+| `RechercheControllerTest.js` | Validation des paramètres (400), filtrage des occurrences, fins de mois et années bissextiles |
+| `RechercheRoutesTest.js` | Route `/api/evenements/search` de bout en bout, dont le refus sans session (401) |
+| `SQLiteTest.js` (modifié) | Liste des tables mise à jour avec `partage` |
 
-## 9. Points restant à traiter
+Ils sont inclus dans `npm test` et disposent de scripts dédiés :
 
-- `data/chronosquad.sqlite` est encore suivi par Git. `.gitignore` exclut `data/`, mais il faut retirer le fichier du dépôt avec `git rm --cached data/chronosquad.sqlite`.
-- Brancher la recherche du front sur `GET /api/evenements/search`.
-- Ajouter les nouveaux tests au script `npm test` et faire utiliser une base en mémoire à `test-recurrence-integration.js`.
-
+- `npm run test:recurrence` : `EvenementTest.js`, `test-recurrence-service.js`, `test-recurrence-integration.js` ;
+- `npm run test:recherche` : les trois fichiers `Recherche*Test.js`.
 Documentation officielle : [SQLite dans Node.js](https://nodejs.org/api/sqlite.html).

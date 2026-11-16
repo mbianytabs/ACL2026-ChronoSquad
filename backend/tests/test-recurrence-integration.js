@@ -1,75 +1,59 @@
-
+import { test } from "node:test";
 import assert from "node:assert/strict";
-import { getDatabase, closeDatabase } from "../storage/SQLiteDatabase.js";
+import { SQLiteDatabase } from "../storage/SQLiteDatabase.js";
 import { Evenement } from "../models/Evenement.js";
 import { EvenementRepository } from "../repositories/EvenementRepository.js";
 import { RecurrenceService } from "../services/RecurrenceService.js";
 
-async function tester() {
+// Base en mémoire : le test ne touche pas data/chronosquad.sqlite.
+function createFixture() {
+    const db = new SQLiteDatabase(":memory:");
+    const createdAt = "2026-10-01T10:00:00.000Z";
+    db.run("INSERT INTO user (id, username, password_hash, created_at) VALUES (1, 'alice', 'hash', ?)",
+        [createdAt]);
+    db.run("INSERT INTO agenda (id, name, color, owner_id, created_at) VALUES ('a1', 'Personnel', '#3b82f6', 1, ?)",
+        [createdAt]);
+    return { db, repository: new EvenementRepository(db) };
+}
+
+test("la récurrence annuelle est persistée puis ses occurrences sont calculées", async () => {
+    const { db, repository } = createFixture();
     try {
-        const db = getDatabase();
-        const repository = new EvenementRepository(db);
-
-        // Utiliser un agenda existant pour respecter la clé étrangère.
-        const agenda = db.get(
-            "SELECT id FROM agenda LIMIT 1"
-        );
-
-        if (!agenda) {
-            throw new Error(
-                "Aucun agenda en base. Crée d'abord un agenda de test."
-            );
-        }
-
         const evenement = new Evenement(
             null,
-            agenda.id,
+            "a1",
             "Test récurrence annuelle",
             "2026-11-10T10:00:00.000Z",
             "2026-11-10T11:00:00.000Z",
-            "Événement créé par le script de test",
+            "Événement créé par le test",
             "Nancy",
             "yearly",
             "2028-11-10"
         );
 
-        // Enregistrer dans SQLite.
         const cree = await repository.create(evenement);
-        console.log("Événement enregistré :", cree.toJSON());
-
-        // Relire depuis SQLite.
         const relu = await repository.findById(cree.id);
 
         assert.equal(relu.recurrenceFrequency, "yearly");
         assert.equal(relu.recurrenceEndDate, "2028-11-10");
 
-        console.log("RÉUSSI : les informations de récurrence sont persistées.");
-
-        // Calculer les occurrences.
-        const occurrences =
-            RecurrenceService.genererOccurrences(relu, 100);
-
-        assert.equal(occurrences.length, 3);
-
-        console.log(
-            "Occurrences calculées :",
-            occurrences.map(o => ({
-                start: o.debut.toISOString(),
-                end: o.fin.toISOString()
-            }))
+        const occurrences = RecurrenceService.genererOccurrences(relu, 100);
+        assert.deepEqual(
+            occurrences.map(o => o.debut.toISOString()),
+            ["2026-11-10T10:00:00.000Z", "2027-11-10T10:00:00.000Z", "2028-11-10T10:00:00.000Z"]
         );
-
-        console.log("RÉUSSI : les 3 occurrences annuelles sont calculées.");
-
-        // Nettoyer l'événement de test.
-        await repository.delete(cree.id);
-        console.log("Événement de test supprimé.");
     } finally {
-        closeDatabase();
+        db.close();
     }
-}
+});
 
-tester().catch(error => {
-    console.error("ÉCHEC DU TEST :", error);
-    process.exitCode = 1;
+test("une base SQLite refuse une fréquence de récurrence inconnue", () => {
+    const { db } = createFixture();
+    try {
+        assert.throws(() => db.run(`INSERT INTO evenement (id, agenda_id, title, start, end, recurrence_frequency)
+            VALUES ('e1', 'a1', 'Test', '2026-11-10T10:00:00.000Z', '2026-11-10T11:00:00.000Z', 'hourly')`),
+        /CHECK constraint failed/);
+    } finally {
+        db.close();
+    }
 });
