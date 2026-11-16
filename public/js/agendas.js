@@ -46,6 +46,33 @@ const eventTitle = document.getElementById('event-title');
 const eventWhen = document.getElementById('event-when');
 const eventLocationRow = document.getElementById('event-location-row');
 const eventLocation = document.getElementById('event-location');
+const eventRecurrenceRow = document.getElementById('event-recurrence-row');
+const eventRecurrence = document.getElementById('event-recurrence');
+
+const RECURRENCE_LABELS = {
+    daily: 'Tous les jours',
+    weekly: 'Toutes les semaines',
+    monthly: 'Tous les mois',
+    yearly: 'Tous les ans'
+};
+
+function formatRecurrence(ev) {
+    const label = RECURRENCE_LABELS[ev.recurrenceFrequency];
+
+    if (!label) return '';
+
+    if (!ev.recurrenceEndDate) return label;
+
+    const end = new Date(ev.recurrenceEndDate + 'T12:00:00');
+
+    return label
+        + ' jusqu’au '
+        + end.toLocaleDateString('fr-FR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+}
 const eventAgenda = document.getElementById('event-agenda');
 const eventDescription = document.getElementById('event-description');
 const eventError = document.getElementById('event-error');
@@ -1403,7 +1430,9 @@ function createEventBlock(
         (
             minutes < 50
                 ? ' compact'
-                : ''
+                : minutes < 75
+                    ? ' short'
+                    : ''
         );
 
     block.dataset.searchEventKey =
@@ -1645,6 +1674,14 @@ function openEvent(
 
     eventLocationRow.hidden =
         !ev.location;
+
+    if (eventRecurrenceRow && eventRecurrence) {
+        eventRecurrence.textContent =
+            formatRecurrence(ev);
+
+        eventRecurrenceRow.hidden =
+            !eventRecurrence.textContent;
+    }
 
     eventAgenda.textContent =
         agenda.name;

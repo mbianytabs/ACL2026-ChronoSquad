@@ -188,17 +188,22 @@ a {
 }
 
 #search-input {
-    width: 220px;
+    width: 240px;
     height: 36px;
-    padding: 0 12px;
+    padding: 0 14px;
+    font: inherit;
+    font-size: 0.875rem;
+    color: var(--text);
     border: 1px solid rgba(120, 120, 150, 0.25);
-    border-radius: 12px;
+    border-radius: 999px;
     background: rgba(255, 255, 255, 0.75);
     outline: none;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
 #search-input:focus {
     border-color: var(--sun);
+    box-shadow: 0 0 0 3px rgba(245, 165, 36, 0.18);
 }
 
 .search-filters {
@@ -237,11 +242,19 @@ a {
     width: 100%;
     height: 40px;
     padding: 0 12px;
+    font: inherit;
+    font-size: 0.875rem;
+    color: var(--text);
     border: 1px solid rgba(120, 120, 150, 0.25);
     border-radius: 10px;
-    background: white;
+    background-color: white;
     outline: none;
     box-sizing: border-box;
+}
+
+.search-filters select {
+    padding-right: 36px;
+    background-position: right 12px center;
 }
 
 .search-filters input:focus,
@@ -252,13 +265,17 @@ a {
 
 .search-filter-actions {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
     gap: 10px;
     margin-top: 16px;
 }
 
-.search-filter-actions .btn-primary {
+.search-filter-actions .btn,
+.search-filter-actions .btn.btn-primary {
+    height: 40px;
     margin-top: 0;
+    font-size: 0.875rem;
 }
 
 .search-results {
@@ -302,6 +319,8 @@ a {
     padding: 11px 12px;
     border: none;
     border-radius: 11px;
+    font: inherit;
+    color: var(--text);
     background: transparent;
     text-align: left;
     cursor: pointer;
@@ -378,6 +397,7 @@ input[type="text"],
 input[type="password"],
 input[type="date"],
 input[type="time"],
+select,
 textarea {
     width: 100%;
     height: 44px;
@@ -394,10 +414,23 @@ input::placeholder {
     color: var(--faint);
 }
 
+/* Liste déroulante : même apparence que les autres champs, flèche personnalisée */
+select {
+    padding-right: 40px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%231c1e3a' stroke-opacity='0.6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 12px 8px;
+}
+
 input[type="text"]:focus,
 input[type="password"]:focus,
 input[type="date"]:focus,
 input[type="time"]:focus,
+select:focus,
 textarea:focus {
     outline: none;
     border-color: var(--sun);
@@ -1096,7 +1129,15 @@ body:has(> .home) {
     padding-bottom: 2px;
 }
 
-.event.compact .event-location {
+/* Chaque ligne garde sa hauteur : sans cela, flexbox écrase le titre
+   et coupe le bas des lettres (é, q, p...). */
+.event > * {
+    flex-shrink: 0;
+}
+
+/* Les tâches d'environ une heure n'ont la place que pour le titre et l'horaire. */
+.event.compact .event-location,
+.event.short .event-location {
     display: none;
 }
 
