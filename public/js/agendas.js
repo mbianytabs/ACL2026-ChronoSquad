@@ -4432,17 +4432,6 @@ document.addEventListener(
 );
 
 
-/* =========================================================
-   IMPORT D'AGENDA (.ics) — US-13
-   ---------------------------------------------------------
-   1. l'utilisateur choisit (ou dépose) un fichier .ics ;
-   2. le fichier est lu dans le navigateur (IcsParser) et
-      un aperçu des événements est affiché ;
-   3. « Importer » envoie l'agenda et ses événements au
-      serveur (api.importAgenda), puis l'agenda importé est
-      affiché dans le calendrier.
-   ========================================================= */
-
 const importBtn = document.getElementById('import-btn');
 const importDialog = document.getElementById('import-dialog');
 const importForm = document.getElementById('import-form');
@@ -4458,11 +4447,12 @@ const importWarnings = document.getElementById('import-warnings');
 const importError = document.getElementById('import-error');
 const importSubmit = document.getElementById('import-submit');
 
-const IMPORT_MAX_SIZE = 5 * 1024 * 1024;
+const IMPORT_MAX_SIZE = 1024 * 1024;
 const IMPORT_PREVIEW_COUNT = 5;
 
 let importData = null;
 let importing = false;
+let importFileVersion = 0;
 
 function showImportError(message) {
     importError.textContent = message;
@@ -4475,6 +4465,7 @@ function setImportColor(color) {
 }
 
 function resetImport() {
+    importFileVersion++;
     importData = null;
     importForm.reset();
     importDropLabel.textContent = 'Choisir un fichier .ics';
@@ -4602,6 +4593,7 @@ function renderImportPreview(fileName) {
 }
 
 async function loadImportFile(file) {
+    const version = ++importFileVersion;
     importData = null;
     importPreview.hidden = true;
     importError.hidden = true;
@@ -4619,19 +4611,15 @@ async function loadImportFile(file) {
     }
 
     if (file.size > IMPORT_MAX_SIZE) {
-        showImportError('Ce fichier est trop volumineux (5 Mo maximum).');
+        showImportError('Ce fichier est trop volumineux (1 Mo maximum).');
         return;
     }
 
     try {
-        const parsed = IcsParser.parse(await file.text());
-
-        if (parsed.evenements.length === 0) {
-            showImportError('Ce calendrier ne contient aucun événement à importer.');
-            return;
-        }
-
-        importData = parsed;
+        const contenu = await file.text();
+        const parsed = await api.previewImport(contenu);
+        if (version !== importFileVersion) return;
+        importData = { ...parsed, contenu, warnings: [] };
 
         importName.value =
             parsed.name
@@ -4643,11 +4631,9 @@ async function loadImportFile(file) {
         renderImportPreview(file.name);
 
     } catch (err) {
-        showImportError(
-            err instanceof IcsParser.IcsError
-                ? err.message
-                : 'Lecture du fichier impossible.'
-        );
+        if (version !== importFileVersion) return;
+        if (err.status === 401) goToLogin();
+        else showImportError(err.message || 'Lecture du fichier impossible.');
     }
 }
 
@@ -4675,7 +4661,7 @@ async function submitImport() {
         const result = await api.importAgenda(
             name,
             importColor.value,
-            importData.evenements
+            importData.contenu
         );
 
         [agendas, evenements] = await Promise.all([
@@ -4712,11 +4698,7 @@ async function submitImport() {
             return;
         }
 
-        showImportError(
-            err.status === 404
-                ? 'L\'import n\'est pas encore disponible sur le serveur.'
-                : err.message || 'Import impossible. Réessayez.'
-        );
+        showImportError(err.message || 'Import impossible. Réessayez.');
 
     } finally {
         importing = false;

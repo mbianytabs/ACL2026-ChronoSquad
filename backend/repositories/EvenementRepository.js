@@ -47,50 +47,52 @@ export class EvenementRepository {
     }
 
     async create(evenement) {
-        return this.db.transaction(() => {
-            const id = evenement.id ??
-                String(
-                    this.db.get(
-                        `SELECT COALESCE(
-                            MAX(CAST(id AS INTEGER)), 0
-                        ) + 1 AS id
-                        FROM evenement`
-                    ).id
-                );
+        return this.db.transaction(() => this.insert(evenement));
+    }
 
-            this.db.run(
-                `INSERT INTO evenement (
-                    id,
-                    agenda_id,
-                    title,
-                    start,
-                    end,
-                    description,
-                    location,
-                    recurrence_frequency,
-                    recurrence_end_date
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [
-                    id,
-                    evenement.agendaId,
-                    evenement.title,
-                    evenement.start.toISOString(),
-                    evenement.end.toISOString(),
-                    evenement.description,
-                    evenement.location,
-                    evenement.recurrenceFrequency ?? null,
-                    evenement.recurrenceEndDate ?? null
-                ]
-            );
-
-            return toEvenement(
+    insert(evenement, agendaId = evenement.agendaId) {
+        const id = evenement.id ??
+            String(
                 this.db.get(
-                    "SELECT * FROM evenement WHERE id = ?",
-                    [id]
-                )
+                    `SELECT COALESCE(
+                        MAX(CAST(id AS INTEGER)), 0
+                    ) + 1 AS id
+                    FROM evenement`
+                ).id
             );
-        });
+
+        this.db.run(
+            `INSERT INTO evenement (
+                id,
+                agenda_id,
+                title,
+                start,
+                end,
+                description,
+                location,
+                recurrence_frequency,
+                recurrence_end_date
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                id,
+                agendaId,
+                evenement.title,
+                evenement.start.toISOString(),
+                evenement.end.toISOString(),
+                evenement.description,
+                evenement.location,
+                evenement.recurrenceFrequency ?? null,
+                evenement.recurrenceEndDate ?? null
+            ]
+        );
+
+        return toEvenement(
+            this.db.get(
+                "SELECT * FROM evenement WHERE id = ?",
+                [id]
+            )
+        );
     }
 
     async findByOwner(ownerId) {

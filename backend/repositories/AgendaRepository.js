@@ -74,11 +74,13 @@ export class AgendaRepository {
     }
 
     async create(agenda) {
-        return this.db.transaction(() => {
-            const id = agenda.id ?? String(this.db.get("SELECT COALESCE(MAX(CAST(id AS INTEGER)), 0) + 1 AS id FROM agenda").id);
-            this.db.run("INSERT INTO agenda (id, name, color, owner_id, created_at) VALUES (?, ?, ?, ?, ?)",
-                [id, agenda.name, agenda.color, agenda.ownerId, agenda.createdAt.toISOString()]);
-            return toAgenda(this.db.get("SELECT * FROM agenda WHERE id = ?", [id]));
-        });
+        return this.db.transaction(() => this.insert(agenda));
+    }
+
+    insert(agenda) {
+        const id = agenda.id ?? String(this.db.get("SELECT COALESCE(MAX(CAST(id AS INTEGER)), 0) + 1 AS id FROM agenda").id);
+        this.db.run("INSERT INTO agenda (id, name, color, owner_id, created_at) VALUES (?, ?, ?, ?, ?)",
+            [id, agenda.name, agenda.color, agenda.ownerId, agenda.createdAt.toISOString()]);
+        return toAgenda(this.db.get("SELECT * FROM agenda WHERE id = ?", [id]));
     }
 }

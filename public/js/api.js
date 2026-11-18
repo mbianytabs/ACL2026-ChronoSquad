@@ -189,30 +189,27 @@ const api = {
             + encodeURIComponent(id)
         ),
 
-    /*
-     * Import d'un agenda depuis un fichier .ics (US-13).
-     * Le fichier est lu côté navigateur (voir ics.js) ;
-     * le serveur reçoit directement les données à créer :
-     *
-     *   POST /api/agendas/import
-     *   {
-     *     name: string, color: '#rrggbb',
-     *     evenements: [{ title, start, end, location, description,
-     *                    recurrenceFrequency, recurrenceEndDate }]
-     *   }
-     *
-     * Réponse attendue : 201 { agenda: { id, name, color, ... },
-     *                          evenements: [...] }
-     * (endpoint à implémenter côté backend)
-     */
-    importAgenda: (name, color, evenements) =>
+    previewImport: (contenu) => request('POST', '/api/agendas/import/preview', { contenu }),
+
+    exportAgenda: async (id) => {
+        const response = await fetch('/api/agendas/' + encodeURIComponent(id) + '/export', {
+            credentials: 'same-origin'
+        });
+        if (!response.ok) {
+            const data = await response.json();
+            throw new ApiError(response.status, data.error || 'Export impossible.');
+        }
+        return response.blob();
+    },
+
+    importAgenda: (name, color, contenu) =>
         request(
             'POST',
             '/api/agendas/import',
             {
                 name,
                 color,
-                evenements
+                contenu
             }
         )
 };

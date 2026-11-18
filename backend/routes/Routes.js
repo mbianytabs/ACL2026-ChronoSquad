@@ -8,6 +8,7 @@ import { AgendaController } from "../controllers/AgendaController.js";
 import { EvenementController } from "../controllers/EvenementController.js";
 import { requireAuth } from "../middleware/RequireAuth.js";
 import { requireSameOrigin } from "../middleware/Session.js";
+import { ICalendarController } from "../controllers/ICalendarController.js";
 
 export const apiRouter = Router();
 
@@ -16,6 +17,9 @@ apiRouter.get("/users/me", requireAuth, UserController.getCurrentUser);
 apiRouter.post("/auth/login", requireSameOrigin, AuthController.login);
 apiRouter.post("/auth/logout", requireSameOrigin, AuthController.logout);
 
+apiRouter.post("/agendas/import/preview", requireSameOrigin, requireAuth, ICalendarController.preview);
+apiRouter.post("/agendas/import", requireSameOrigin, requireAuth, ICalendarController.importer);
+apiRouter.get("/agendas/:id/export", requireAuth, ICalendarController.exporter);
 apiRouter.get("/agendas", requireAuth, AgendaController.getAgendas);
 apiRouter.get("/agendas/:id", requireAuth, AgendaController.getAgenda);
 apiRouter.post("/agendas", requireSameOrigin, requireAuth, AgendaController.createAgenda);
