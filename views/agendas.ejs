@@ -245,6 +245,10 @@
             <%= locals.user ? user.username : '' %>
         </span>
 
+        <a href="/parametres" class="btn btn-glass btn-round settings-link" aria-label="Paramètres" title="Paramètres">
+            <span aria-hidden="true">⚙</span>
+        </a>
+
         <button
             id="logout-btn"
             type="button"
@@ -1414,6 +1418,14 @@
 
 
 <!-- SCRIPT -->
+
+<dialog id="agenda-menu" class="event-pop agenda-actions-menu" aria-label="Actions de l'agenda">
+    <div class="event-pop-inner">
+        <button id="agenda-menu-edit" type="button">Modifier l’agenda</button>
+        <button id="agenda-menu-share" type="button">Partager l’agenda</button>
+        <button id="agenda-menu-export" type="button">Exporter en .ics</button>
+    </div>
+</dialog>
 
 <%- include('partials/scripts', { script: 'agendas.js' }) %>
 

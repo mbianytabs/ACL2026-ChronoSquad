@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<%- include('partials/head', { title: 'Paramètres' }) %>
+<body>
+    <header class="topbar settings-topbar">
+        <%- include('partials/brand', { href: '/agendas' }) %>
+        <a href="/agendas" class="btn btn-glass settings-back">← Retour à l’agenda</a>
+    </header>
+
+    <main class="settings-page">
+        <aside class="settings-nav" aria-label="Paramètres">
+            <h1>Paramètres</h1>
+            <a href="#echanges" aria-current="page">Importer et exporter</a>
+            <p>Vos agendas restent enregistrés dans ChronoSquad.</p>
+        </aside>
+
+        <div id="echanges" class="settings-content">
+            <div class="settings-heading">
+                <span class="settings-eyebrow">VOS DONNÉES</span>
+                <h2>Importer et exporter</h2>
+                <p>Ajoutez un calendrier existant ou emportez une copie de vos agendas.</p>
+            </div>
+
+            <section class="settings-card glass" aria-labelledby="settings-import-title">
+                <div class="settings-section-heading">
+                    <span class="settings-section-icon" aria-hidden="true">↑</span>
+                    <div>
+                        <h2 id="settings-import-title">Importer un agenda</h2>
+                        <p>Un fichier .ics crée un nouvel agenda, sans remplacer vos données.</p>
+                    </div>
+                </div>
+                <form id="settings-import-form">
+                    <label for="settings-file">Fichier iCalendar</label>
+                    <input id="settings-file" type="file" accept=".ics,text/calendar" aria-describedby="settings-file-help">
+                    <p id="settings-file-help" class="hint">Format .ics · 1 Mo maximum. Les événements sont vérifiés avant l’import.</p>
+
+                    <div id="settings-preview" hidden>
+                        <div class="settings-import-fields">
+                            <div>
+                                <label for="settings-name">Nom de l’agenda</label>
+                                <input id="settings-name" type="text" required maxlength="200">
+                            </div>
+                            <div>
+                                <label for="settings-color">Couleur</label>
+                                <input id="settings-color" type="color" value="#3b82f6">
+                            </div>
+                        </div>
+                        <p id="settings-count" class="settings-preview-count"></p>
+                        <ul id="settings-preview-list" class="settings-preview-list"></ul>
+                        <button id="settings-import-submit" type="submit" class="btn btn-primary" disabled>Importer l’agenda</button>
+                    </div>
+                </form>
+                <p id="settings-import-message" role="status" hidden></p>
+                <a id="settings-import-link" href="/agendas" hidden>Voir mes agendas →</a>
+            </section>
+
+            <section class="settings-card glass" aria-labelledby="settings-export-title">
+                <div class="settings-section-heading">
+                    <span class="settings-section-icon" aria-hidden="true">↓</span>
+                    <div>
+                        <h2 id="settings-export-title">Exporter vos agendas</h2>
+                        <p>Téléchargez un agenda en .ics, ou tous vos agendas dans une archive ZIP.</p>
+                    </div>
+                </div>
+                <div class="settings-export-all">
+                    <div>
+                        <strong>Tous les agendas accessibles</strong>
+                        <p>Un fichier .ics par agenda, y compris ceux partagés avec vous.</p>
+                    </div>
+                    <button id="settings-export-all" type="button" class="btn btn-primary" disabled>Tout exporter (.zip)</button>
+                </div>
+                <p id="settings-export-message" role="status" hidden></p>
+                <p id="settings-empty" class="hint">Chargement des agendas…</p>
+                <ul id="settings-agendas" class="settings-agendas" aria-label="Agendas à exporter"></ul>
+                <p class="settings-footnote">L’export conserve les événements et leurs récurrences compatibles. Il n’inclut pas les comptes ni les droits de partage.</p>
+            </section>
+        </div>
+    </main>
+    <%- include('partials/scripts', { script: 'parametres.js' }) %>
+</body>
+</html>

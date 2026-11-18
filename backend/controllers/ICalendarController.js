@@ -4,8 +4,32 @@ import { Evenement } from "../models/Evenement.js";
 import { AgendaRepository } from "../repositories/AgendaRepository.js";
 import { EvenementRepository } from "../repositories/EvenementRepository.js";
 import { ICalendarService } from "../services/ICalendarService.js";
+import { zipSync, strToU8 } from "fflate";
 
 export class ICalendarController {
+    static async exporterTous(req, res) {
+        const agendas = new AgendaRepository(req.app.locals.database);
+        const events = new EvenementRepository(req.app.locals.database);
+        const accessibles = await agendas.findAccessible(req.user.id);
+        if (accessibles.length === 0) {
+            throw createError(400, "Aucun agenda à exporter.");
+        }
+        const fichiers = {};
+        for (const agenda of accessibles) {
+            const evenements = await events.findByAgenda(agenda.id);
+            const nom = agenda.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-zA-Z0-9_-]/g, "-").slice(0, 60) || "agenda";
+            try {
+                fichiers[nom + "-" + agenda.id + ".ics"] = strToU8(ICalendarService.exporter(agenda, evenements));
+            } catch (error) {
+                throw createError(400, error.message);
+            }
+        }
+        res.attachment("chronosquad-agendas.zip");
+        res.type("application/zip");
+        res.send(Buffer.from(zipSync(fichiers)));
+    }
+
     static async preview(req, res) {
         try {
             const data = await ICalendarService.lire(req.body?.contenu);

@@ -1,0 +1,313 @@
+.settings-link {
+    text-decoration: none;
+    font-size: 24px;
+    line-height: 1;
+    flex: none;
+}
+
+.agenda-more {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.agenda-actions-menu {
+    inset: auto;
+    top: var(--y, 50%);
+    left: var(--x, 50%);
+    width: 230px;
+    max-width: calc(100vw - 32px);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.97);
+}
+
+.agenda-actions-menu::before {
+    display: none;
+}
+
+.agenda-actions-menu .event-pop-inner {
+    padding: 8px;
+}
+
+.agenda-actions-menu button {
+    display: block;
+    width: 100%;
+    padding: 11px 14px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.agenda-actions-menu button:hover,
+.agenda-actions-menu button:focus-visible {
+    background: var(--tint-strong);
+    outline: 2px solid transparent;
+}
+
+.settings-back {
+    margin-left: auto;
+    text-decoration: none;
+}
+
+.settings-page {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    gap: 44px;
+    max-width: 1130px;
+    margin: 38px auto 70px;
+    padding: 0 28px;
+}
+
+.settings-nav {
+    align-self: start;
+    position: sticky;
+    top: 24px;
+}
+
+.settings-nav h1 {
+    margin-bottom: 28px;
+    font-size: 1.5rem;
+}
+
+.settings-nav a {
+    display: block;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(245, 165, 36, 0.18);
+    text-decoration: none;
+    font-size: 0.875rem;
+}
+
+.settings-nav p {
+    padding: 4px 14px;
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.settings-heading {
+    margin-bottom: 28px;
+}
+
+.settings-eyebrow {
+    color: var(--muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+}
+
+.settings-heading h2 {
+    margin-top: 8px;
+    font-size: 1.9rem;
+}
+
+.settings-heading p,
+.settings-section-heading p,
+.settings-export-all p {
+    margin: 9px 0 0;
+    font-size: 0.875rem;
+    color: var(--muted);
+}
+
+.settings-card {
+    margin-bottom: 24px;
+    padding: 26px;
+    border-radius: var(--radius-lg);
+}
+
+.settings-section-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.settings-section-heading h2 {
+    font-size: 1.15rem;
+}
+
+.settings-section-icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    font-size: 23px;
+    background: rgba(245, 165, 36, 0.16);
+}
+
+.settings-card label {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 0.8rem;
+}
+
+#settings-file {
+    width: 100%;
+    padding: 12px;
+    border: 1px dashed rgba(28, 30, 58, 0.23);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.55);
+    font: inherit;
+    font-size: 0.85rem;
+}
+
+#settings-file::file-selector-button {
+    margin-right: 12px;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--tint-strong);
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+}
+
+.settings-import-fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 70px;
+    gap: 14px;
+    margin-top: 20px;
+}
+
+.settings-import-fields input {
+    width: 100%;
+}
+
+#settings-color {
+    height: 44px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: white;
+    cursor: pointer;
+}
+
+.settings-preview-count {
+    margin: 20px 0 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.settings-preview-list,
+.settings-agendas {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.settings-preview-list {
+    margin-bottom: 18px;
+}
+
+.settings-preview-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.8rem;
+}
+
+.settings-preview-list span {
+    color: var(--muted);
+    flex: none;
+}
+
+.settings-export-all {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--line);
+}
+
+.settings-export-all strong {
+    font-size: 0.9rem;
+}
+
+.settings-agendas li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.settings-agenda-dot {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 4px;
+}
+
+.settings-agenda-info {
+    display: grid;
+    flex: 1;
+    gap: 3px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 0.9rem;
+}
+
+.settings-agenda-info span {
+    color: var(--muted);
+    font-size: 0.75rem;
+}
+
+.settings-agendas .btn {
+    flex: none;
+    font-size: 0.8rem;
+}
+
+.settings-footnote {
+    margin: 18px 0 0;
+    color: var(--muted);
+    font-size: 0.75rem;
+}
+
+.settings-success {
+    color: #176447;
+    font-size: 0.875rem;
+}
+
+@media (max-width: 760px) {
+    .settings-topbar {
+        padding: 14px 16px;
+    }
+    .settings-back {
+        font-size: 0.8rem;
+    }
+    .settings-page {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 24px;
+        margin-top: 24px;
+        padding: 0 16px;
+    }
+    .settings-nav {
+        position: static;
+    }
+    .settings-nav h1 {
+        margin-bottom: 16px;
+    }
+    .settings-nav p {
+        display: none;
+    }
+    .settings-heading h2 {
+        font-size: 1.6rem;
+    }
+    .settings-card {
+        padding: 20px;
+    }
+    .settings-preview-list li {
+        flex-direction: column;
+        gap: 2px;
+    }
+}

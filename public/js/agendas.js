@@ -655,86 +655,56 @@ function createAgendaRow(agenda) {
 
     item.append(row);
 
-    const edit =
-        document.createElement('button');
-
-    edit.type =
-        'button';
-
-    edit.className =
-        'agenda-edit';
-
-    edit.setAttribute(
-        'aria-label',
-        'Modifier l\'agenda '
-        + agenda.name
-    );
-
-    edit.title =
-        'Modifier';
-
-    edit.innerHTML =
-        '<svg viewBox="0 0 24 24" aria-hidden="true">'
-        + '<path d="M4 20h4L19 9l-4-4L4 16v4z"/>'
-        + '<path d="M13.5 6.5l4 4"/>'
-        + '</svg>';
-
-    edit.addEventListener(
-        'click',
-        () =>
-            openEditAgenda(
-                agenda
-            )
-    );
-
-    item.append(edit);
-    if (!isOwnAgenda(agenda)) {
-        return item;
-    }
-
-    const share =
-        document.createElement('button');
-
-    share.type =
-        'button';
-
-    share.className =
-        'agenda-edit agenda-share';
-
-    share.setAttribute(
-        'aria-label',
-        'Partager l\'agenda '
-        + agenda.name
-    );
-
-    share.setAttribute(
-        'aria-haspopup',
-        'dialog'
-    );
-
-    share.title =
-        'Partager';
-
-    share.innerHTML =
-        '<svg viewBox="0 0 24 24" aria-hidden="true">'
-        + '<circle cx="10" cy="8" r="3.5"/>'
-        + '<path d="M3.5 20c0-3.6 2.9-6 6.5-6 1.5 0 2.9.4 4 1.2"/>'
-        + '<path d="M18 14v6M15 17h6"/>'
-        + '</svg>';
-
-    share.addEventListener(
-        'click',
-        () =>
-            openShare(
-                agenda,
-                share
-            )
-    );
-
-    item.append(share);
-
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'agenda-edit agenda-more';
+    more.textContent = '⋮';
+    more.title = 'Actions de l’agenda';
+    more.setAttribute('aria-label', 'Actions de l’agenda ' + agenda.name);
+    more.setAttribute('aria-haspopup', 'dialog');
+    more.setAttribute('aria-controls', 'agenda-menu');
+    more.addEventListener('click', () => openAgendaMenu(agenda, more));
+    item.append(more);
     return item;
 }
+
+const agendaMenu = document.getElementById('agenda-menu');
+let menuAgenda = null;
+let menuAnchor = null;
+
+function openAgendaMenu(agenda, anchor) {
+    menuAgenda = agenda;
+    menuAnchor = anchor;
+    agendaMenu.style.setProperty('--agenda-color', agenda.color);
+    document.getElementById('agenda-menu-share').hidden = !isOwnAgenda(agenda);
+    agendaMenu.showModal();
+    placePopover(agendaMenu, anchor);
+}
+
+agendaMenu.addEventListener('click', event => {
+    if (event.target === agendaMenu) agendaMenu.close();
+});
+
+document.getElementById('agenda-menu-edit').addEventListener('click', () => {
+    agendaMenu.close();
+    openEditAgenda(menuAgenda);
+});
+
+document.getElementById('agenda-menu-share').addEventListener('click', () => {
+    agendaMenu.close();
+    openShare(menuAgenda, menuAnchor);
+});
+
+document.getElementById('agenda-menu-export').addEventListener('click', async () => {
+    const agenda = menuAgenda;
+    agendaMenu.close();
+    try {
+        downloadFile(await api.exportAgenda(agenda.id), 'agenda-' + agenda.id + '.ics');
+    } catch (error) {
+        if (error.status === 401) goToLogin();
+        else showError(error.message || 'Export impossible.');
+    }
+});
 
 function renderAgendaList() {
     list.replaceChildren(

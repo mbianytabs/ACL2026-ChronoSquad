@@ -20,6 +20,7 @@ apiRouter.post("/auth/logout", requireSameOrigin, AuthController.logout);
 apiRouter.post("/agendas/import/preview", requireSameOrigin, requireAuth, ICalendarController.preview);
 apiRouter.post("/agendas/import", requireSameOrigin, requireAuth, ICalendarController.importer);
 apiRouter.get("/agendas/:id/export", requireAuth, ICalendarController.exporter);
+apiRouter.get("/agendas/export", requireAuth, ICalendarController.exporterTous);
 apiRouter.get("/agendas", requireAuth, AgendaController.getAgendas);
 apiRouter.get("/agendas/:id", requireAuth, AgendaController.getAgenda);
 apiRouter.post("/agendas", requireSameOrigin, requireAuth, AgendaController.createAgenda);

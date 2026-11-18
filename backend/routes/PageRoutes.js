@@ -20,3 +20,7 @@ pageRouter.get("/register", (req, res) => {
 pageRouter.get("/agendas", (req, res) => {
     res.render("agendas");
 });
+
+pageRouter.get("/parametres", (req, res) => {
+    res.render("parametres");
+});
