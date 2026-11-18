@@ -21,6 +21,9 @@ apiRouter.get("/agendas/:id", requireAuth, AgendaController.getAgenda);
 apiRouter.post("/agendas", requireSameOrigin, requireAuth, AgendaController.createAgenda);
 apiRouter.put("/agendas/:id", requireSameOrigin, requireAuth, AgendaController.updateAgenda);
 apiRouter.delete("/agendas/:id", requireSameOrigin, requireAuth, AgendaController.deleteAgenda);
+apiRouter.get("/agendas/:id/partages", requireAuth, AgendaController.getPartages);
+apiRouter.post("/agendas/:id/partages", requireSameOrigin, requireAuth, AgendaController.addPartage);
+apiRouter.delete("/agendas/:id/partages/:username", requireSameOrigin, requireAuth, AgendaController.removePartage);
 apiRouter.get("/evenements", requireAuth, EvenementController.getEvenements);
 apiRouter.post("/agendas/:agendaId/evenements", requireSameOrigin, requireAuth, EvenementController.createEvenement);
 apiRouter.put("/evenements/:id", requireSameOrigin, requireAuth, EvenementController.updateEvenement);
@@ -30,7 +33,16 @@ apiRouter.get("/health", (req, res) => {
     res.set("Cache-Control", "no-store");
     res.json({ status: "ok" });
 });
-
+apiRouter.get(
+    "/evenements/:id/occurrences",
+    requireAuth,
+    EvenementController.getOccurrences
+);
+apiRouter.get(
+    "/evenements/search",
+    requireAuth,
+    EvenementController.searchEvenements
+);
 apiRouter.use((req, res, next) => {
     next(createError(404, "Route API introuvable."));
 });
