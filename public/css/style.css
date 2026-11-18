@@ -2276,15 +2276,49 @@ body:has(> .home) {
    IMPORT D'AGENDA (.ics)
    ========================================================= */
 
-.import-pop {
-    --agenda-color: #3b82f6;
-    width: 380px;
+/* Lien en bas de l'onglet « Agenda » de la fenêtre « Créer ». */
+.import-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    align-self: center;
+    margin: 4px auto 0;
+    padding: 8px 16px;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--muted);
+    background: transparent;
+    border: 1.5px dashed rgba(28, 30, 58, 0.18);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
 }
 
-/* Ouverte sous l'en-tête : hauteur limitée à l'espace restant. */
+.import-link:hover,
+.import-link:focus-visible {
+    color: var(--text);
+    border-color: rgba(28, 30, 58, 0.35);
+    background: rgba(255, 255, 255, 0.55);
+}
+
+.import-link[hidden] {
+    display: none;
+}
+
+/* Comme la fenêtre « Créer » : en bas au centre de l'écran. */
+.import-pop {
+    --agenda-color: #3b82f6;
+    inset: 0;
+    width: 380px;
+    margin: auto auto 24px;
+    transform-origin: center bottom;
+}
+
 .import-pop,
 .import-pop .event-pop-inner {
-    max-height: calc(100dvh - var(--y, 0px) - 16px);
+    max-height: calc(100dvh - 48px);
 }
 
 .import-drop {

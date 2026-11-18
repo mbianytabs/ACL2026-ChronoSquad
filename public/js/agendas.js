@@ -2891,6 +2891,9 @@ function setKind(kind) {
     agendaFields.hidden =
         isTache;
 
+    importBtn.hidden =
+        editing !== null;
+
     dialogError.hidden =
         true;
 
@@ -4476,27 +4479,13 @@ function resetImport() {
     setImportColor('#3b82f6');
 }
 
-// Le bouton est dans l'en-tête : la fenêtre s'ouvre juste
-// en dessous, alignée sur son bord droit.
-function placeImportDialog() {
-    const margin = 16;
-    const rect = importBtn.getBoundingClientRect();
-    const width = importDialog.offsetWidth;
-
-    const x = Math.min(
-        Math.max(margin, rect.right - width),
-        window.innerWidth - margin - width
-    );
-
-    importDialog.style.setProperty('--x', x + 'px');
-    importDialog.style.setProperty('--y', rect.bottom + 10 + 'px');
-    importDialog.dataset.side = 'left';
-}
-
+// Ouvert depuis l'onglet « Agenda » de la fenêtre « Créer » :
+// celle-ci est fermée et l'import prend sa place, en bas
+// au centre de l'écran.
 function openImport() {
+    closeCreate();
     resetImport();
     importDialog.showModal();
-    placeImportDialog();
 }
 
 function closeImport() {
@@ -4587,7 +4576,6 @@ function renderImportPreview(fileName) {
 
     importPreview.hidden = false;
     importSubmit.disabled = false;
-    placeImportDialog();
     importName.focus();
     importName.select();
 }

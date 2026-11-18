@@ -229,18 +229,6 @@
     <!-- UTILISATEUR -->
     <div class="user">
 
-        <!-- IMPORT D'AGENDA (.ics) -->
-        <button
-            id="import-btn"
-            type="button"
-            class="btn btn-glass"
-            aria-haspopup="dialog"
-            aria-controls="import-dialog"
-            title="Importer un agenda depuis un fichier .ics"
-        >
-            Importer
-        </button>
-
         <span id="current-user">
             <%= locals.user ? user.username : '' %>
         </span>
@@ -875,6 +863,20 @@
                 </span>
 
             </div>
+
+
+            <!-- IMPORT D'AGENDA (.ics) -->
+
+            <button
+                id="import-btn"
+                type="button"
+                class="import-link"
+                aria-haspopup="dialog"
+                aria-controls="import-dialog"
+            >
+                <span aria-hidden="true">📅</span>
+                Importer un calendrier (.ics)
+            </button>
 
         </fieldset>
 
