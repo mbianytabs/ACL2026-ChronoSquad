@@ -141,13 +141,15 @@
     background: rgba(245, 165, 36, 0.16);
 }
 
-.settings-card label {
+.settings-card label,
+.import-pop label {
     display: block;
     margin-bottom: 7px;
     font-size: 0.8rem;
 }
 
-#settings-file {
+#settings-file,
+#import-file {
     width: 100%;
     padding: 12px;
     border: 1px dashed rgba(28, 30, 58, 0.23);
@@ -157,7 +159,8 @@
     font-size: 0.85rem;
 }
 
-#settings-file::file-selector-button {
+#settings-file::file-selector-button,
+#import-file::file-selector-button {
     margin-right: 12px;
     padding: 8px 12px;
     border: 0;
@@ -179,7 +182,8 @@
     width: 100%;
 }
 
-#settings-color {
+#settings-color,
+#import-color {
     height: 44px;
     padding: 4px;
     border: 1px solid var(--line);
@@ -276,6 +280,40 @@
 .settings-success {
     color: #176447;
     font-size: 0.875rem;
+}
+
+.import-pop {
+    inset: 0;
+    width: min(560px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
+    margin: auto;
+    transform-origin: center;
+}
+
+.import-pop .event-pop-inner {
+    padding: 26px;
+}
+
+.import-heading > div {
+    flex: 1;
+}
+
+.import-heading .btn {
+    flex: none;
+}
+
+.import-pop .settings-preview-list {
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.import-pop .event-actions {
+    justify-content: flex-start;
+}
+
+.import-file-field.dragging #import-file {
+    border-color: var(--sun);
+    background: rgba(245, 165, 36, 0.08);
 }
 
 @media (max-width: 760px) {

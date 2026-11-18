@@ -4454,7 +4454,7 @@ const importError = document.getElementById('import-error');
 const importSubmit = document.getElementById('import-submit');
 
 const IMPORT_MAX_SIZE = 1024 * 1024;
-const IMPORT_PREVIEW_COUNT = 5;
+const IMPORT_PREVIEW_COUNT = 3;
 
 let importData = null;
 let importing = false;
@@ -4474,7 +4474,7 @@ function resetImport() {
     importFileVersion++;
     importData = null;
     importForm.reset();
-    importDropLabel.textContent = 'Choisir un fichier .ics';
+    importDropLabel.textContent = 'Fichier iCalendar';
     importPreview.hidden = true;
     importWarnings.hidden = true;
     importError.hidden = true;
@@ -4482,9 +4482,6 @@ function resetImport() {
     setImportColor('#3b82f6');
 }
 
-// Ouvert depuis l'onglet « Agenda » de la fenêtre « Créer » :
-// celle-ci est fermée et l'import prend sa place, en bas
-// au centre de l'écran.
 function openImport() {
     closeCreate();
     resetImport();
@@ -4505,12 +4502,11 @@ function formatImportWhen(ev) {
         weekday: 'short',
         day: 'numeric',
         month: 'short',
-        year: 'numeric'
+        year: 'numeric',
+        ...(ev.allDay ? { timeZone: 'UTC' } : {})
     });
 
-    const allDay =
-        start.getHours() === 0 && start.getMinutes() === 0
-        && end.getHours() === 0 && end.getMinutes() === 0;
+    const allDay = ev.allDay;
 
     let when = allDay
         ? day + ' · journée entière'
@@ -4533,7 +4529,6 @@ function formatImportWhen(ev) {
 function renderImportPreview(fileName) {
     const { evenements, warnings } = importData;
 
-    importDropLabel.textContent = fileName;
     importCount.textContent =
         pluralize(evenements.length, 'événement')
         + ' à importer';
@@ -4542,7 +4537,7 @@ function renderImportPreview(fileName) {
 
     for (const ev of evenements.slice(0, IMPORT_PREVIEW_COUNT)) {
         const li = document.createElement('li');
-        const title = document.createElement('span');
+        const title = document.createElement('strong');
         const when = document.createElement('span');
 
         title.className = 'import-ev-title';
@@ -4594,7 +4589,6 @@ async function loadImportFile(file) {
         return;
     }
 
-    importDropLabel.textContent = file.name;
 
     if (!/\.ics$/i.test(file.name) && file.type !== 'text/calendar') {
         showImportError('Seuls les fichiers .ics sont acceptés.');
@@ -4693,7 +4687,7 @@ async function submitImport() {
 
     } finally {
         importing = false;
-        importSubmit.textContent = 'Importer';
+        importSubmit.textContent = 'Importer l’agenda';
         importSubmit.disabled = !importData;
     }
 }
@@ -4744,6 +4738,7 @@ importForm.addEventListener('submit', (event) => {
 
 importDrop.addEventListener('drop', (event) => {
     event.preventDefault();
+    importFile.files = event.dataTransfer.files;
     loadImportFile(event.dataTransfer.files[0]);
 });
 
