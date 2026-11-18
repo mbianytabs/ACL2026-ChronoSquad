@@ -4415,6 +4415,39 @@ if (searchInput) {
         }
     );
 
+// Clic en dehors de la zone de recherche : le panneau des
+// filtres se ferme (les calendriers / listes des filtres
+// font partie de la zone, même affichés en popover).
+document.addEventListener(
+    'click',
+    (event) => {
+        if (
+            searchFilters
+            && !searchFilters.hidden
+            && event.target.isConnected
+            && !event.target.closest('.search-area')
+        ) {
+            toggleSearchFilters(false);
+        }
+    }
+);
+
+document.addEventListener(
+    'keydown',
+    (event) => {
+        if (
+            event.key === 'Escape'
+            && searchFilters
+            && !searchFilters.hidden
+            && !document.querySelector(':popover-open')
+            && !document.querySelector('dialog[open]')
+        ) {
+            toggleSearchFilters(false);
+            searchFilterBtn?.focus();
+        }
+    }
+);
+
 document.addEventListener(
     'click',
     (event) => {
@@ -4743,6 +4776,1166 @@ importDrop.addEventListener('drop', (event) => {
     event.preventDefault();
     loadImportFile(event.dataTransfer.files[0]);
 });
+
+
+/* =========================================================
+   LISTE DÉROULANTE PERSONNALISÉE
+   ---------------------------------------------------------
+   Le menu natif d'un <select> ne peut pas être stylé : il
+   est remplacé à l'écran par un bouton + un menu « verre »
+   affiché dans la couche supérieure (popover), pour ne pas
+   être rogné par la fenêtre « Créer ».
+   Le <select> reste la source de vérité (masqué) : le code
+   existant continue de lire / écrire select.value.
+   ========================================================= */
+
+// Place un popover (position fixe) sous son bouton, ou
+// au-dessus s'il n'y a pas assez de place en dessous.
+function placeFieldPopover(panel, anchor, { matchWidth = false } = {}) {
+    const margin = 8;
+    const rect = anchor.getBoundingClientRect();
+
+    if (matchWidth) {
+        panel.style.width = rect.width + 'px';
+    }
+
+    const width = panel.offsetWidth;
+    const height = panel.offsetHeight;
+    const below = window.innerHeight - rect.bottom - margin;
+    const above = rect.top - margin;
+    const up = below < height && above > below;
+
+    const left = Math.min(
+        Math.max(margin, rect.left),
+        window.innerWidth - margin - width
+    );
+
+    panel.style.left = left + 'px';
+    panel.style.top =
+        (up ? rect.top - height - 6 : rect.bottom + 6) + 'px';
+    panel.dataset.side = up ? 'top' : 'bottom';
+}
+
+function enhanceSelect(select) {
+    const nativeValue =
+        Object.getOwnPropertyDescriptor(
+            HTMLSelectElement.prototype,
+            'value'
+        );
+
+    const wrapper = document.createElement('div');
+    const trigger = document.createElement('button');
+    const triggerLabel = document.createElement('span');
+    const menu = document.createElement('div');
+
+    const menuId = select.id + '-menu';
+
+    wrapper.className = 'select-custom';
+
+    trigger.type = 'button';
+    trigger.id = select.id + '-button';
+    trigger.className = 'select-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.setAttribute('aria-controls', menuId);
+    triggerLabel.className = 'select-trigger-label';
+    trigger.append(triggerLabel);
+
+    menu.id = menuId;
+    menu.className = 'select-menu';
+    menu.setAttribute('role', 'listbox');
+    menu.setAttribute('popover', 'auto');
+    menu.tabIndex = -1;
+
+    let items = [];
+
+    // Les options peuvent changer (ex. liste des agendas) :
+    // le menu est reconstruit à chaque ouverture.
+    function buildItems() {
+        items = [...select.options].map((option) => {
+            const item = document.createElement('div');
+            const check = document.createElement('span');
+            const text = document.createElement('span');
+
+            item.className = 'select-option';
+            item.setAttribute('role', 'option');
+            item.dataset.value = option.value;
+
+            check.className = 'select-option-check';
+            check.setAttribute('aria-hidden', 'true');
+            text.textContent = option.textContent.trim();
+
+            item.append(check, text);
+
+            item.addEventListener('click', () => choose(option.value));
+            item.addEventListener('pointermove', () => setActive(item, false));
+
+            return item;
+        });
+
+        menu.replaceChildren(...items);
+        sync();
+    }
+
+    // Le libellé <label for> pointe désormais vers le bouton.
+    const label = document.querySelector(
+        'label[for="' + select.id + '"]'
+    );
+
+    if (label) {
+        label.htmlFor = trigger.id;
+        label.id ||= select.id + '-label';
+        menu.setAttribute('aria-labelledby', label.id);
+    }
+
+    select.classList.add('visually-hidden');
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
+    select.after(wrapper);
+    wrapper.append(trigger, menu);
+
+    let active = null;
+    let wasOpen = false;
+
+    function isOpen() {
+        return menu.matches(':popover-open');
+    }
+
+    function sync() {
+        const value = nativeValue.get.call(select);
+        const option = [...select.options].find((o) => o.value === value);
+
+        triggerLabel.textContent =
+            option ? option.textContent.trim() : '';
+
+        for (const item of items) {
+            item.setAttribute(
+                'aria-selected',
+                String(item.dataset.value === value)
+            );
+        }
+    }
+
+    function setActive(item, scroll = true) {
+        active?.classList.remove('active');
+        active = item;
+        active?.classList.add('active');
+
+        if (scroll) {
+            active?.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function place() {
+        placeFieldPopover(menu, trigger, { matchWidth: true });
+    }
+
+    function open() {
+        if (isOpen()) {
+            return;
+        }
+
+        buildItems();
+        menu.showPopover();
+        place();
+        setActive(
+            items.find((i) => i.getAttribute('aria-selected') === 'true')
+            || items[0]
+        );
+        menu.focus({ preventScroll: true });
+    }
+
+    function close(focusTrigger = true) {
+        if (isOpen()) {
+            menu.hidePopover();
+        }
+
+        if (focusTrigger) {
+            trigger.focus({ preventScroll: true });
+        }
+    }
+
+    function choose(value) {
+        const changed = nativeValue.get.call(select) !== value;
+
+        select.value = value;
+        close();
+
+        if (changed) {
+            select.dispatchEvent(new Event('input', { bubbles: true }));
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    // Toute écriture de select.value (code existant) met
+    // à jour le bouton.
+    Object.defineProperty(select, 'value', {
+        configurable: true,
+        get() {
+            return nativeValue.get.call(select);
+        },
+        set(value) {
+            nativeValue.set.call(select, value);
+            sync();
+        }
+    });
+
+    select.form?.addEventListener('reset', () => setTimeout(sync));
+    new MutationObserver(sync).observe(select, { childList: true });
+    select.addEventListener('change', sync);
+
+    // Un clic sur le bouton alors que le menu est ouvert le
+    // ferme (le « light dismiss » l'a déjà fermé au pointerdown).
+    trigger.addEventListener('pointerdown', () => {
+        wasOpen = isOpen();
+    });
+
+    trigger.addEventListener('click', () => {
+        if (wasOpen) {
+            wasOpen = false;
+            return;
+        }
+
+        open();
+    });
+
+    trigger.addEventListener('keydown', (event) => {
+        if (['ArrowDown', 'ArrowUp'].includes(event.key)) {
+            event.preventDefault();
+            open();
+        }
+    });
+
+    // Échap est géré par le navigateur (popover) : il ne
+    // ferme que le menu, pas la fenêtre « Créer ».
+    menu.addEventListener('toggle', (event) => {
+        const opened = event.newState === 'open';
+
+        trigger.setAttribute('aria-expanded', String(opened));
+        wrapper.classList.toggle('open', opened);
+
+        if (!opened && menu.contains(document.activeElement)) {
+            trigger.focus({ preventScroll: true });
+        }
+    });
+
+    menu.addEventListener('keydown', (event) => {
+        const index = items.indexOf(active);
+
+        switch (event.key) {
+            case 'ArrowDown':
+                setActive(items[Math.min(index + 1, items.length - 1)]);
+                break;
+            case 'ArrowUp':
+                setActive(items[Math.max(index - 1, 0)]);
+                break;
+            case 'Home':
+                setActive(items[0]);
+                break;
+            case 'End':
+                setActive(items[items.length - 1]);
+                break;
+            case 'Enter':
+            case ' ':
+                if (active) {
+                    choose(active.dataset.value);
+                }
+                break;
+            case 'Tab':
+                close();
+                return;
+            default:
+                return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+    });
+
+    window.addEventListener('resize', () => close(false));
+
+    // La fenêtre « Créer » défile : le menu suit son bouton.
+    document.addEventListener(
+        'scroll',
+        (event) => {
+            if (isOpen() && event.target !== menu) {
+                place();
+            }
+        },
+        true
+    );
+
+    // Fermeture de la fenêtre parente : le menu aussi.
+    select.closest('dialog')?.addEventListener('close', () => close(false));
+
+    sync();
+}
+
+/* =========================================================
+   SÉLECTEUR DE DATE PERSONNALISÉ
+   ---------------------------------------------------------
+   Même principe que enhanceSelect : l'<input type="date">
+   reste la source de vérité (masqué), un bouton affiche la
+   date et ouvre un calendrier « verre » dans un popover.
+   Options :
+     min() → 'YYYY-MM-DD' : jours antérieurs désactivés ;
+     clearable : bouton « Effacer » (champ facultatif).
+   ========================================================= */
+
+const DATE_PICKER_WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
+function isoDate(date) {
+    return date.getFullYear()
+        + '-' + String(date.getMonth() + 1).padStart(2, '0')
+        + '-' + String(date.getDate()).padStart(2, '0');
+}
+
+function parseIsoDate(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+
+    return match
+        ? new Date(+match[1], +match[2] - 1, +match[3])
+        : null;
+}
+
+function enhanceDateInput(input, { min = () => '', clearable = false } = {}) {
+    const nativeValue =
+        Object.getOwnPropertyDescriptor(
+            HTMLInputElement.prototype,
+            'value'
+        );
+
+    const wrapper = document.createElement('div');
+    const trigger = document.createElement('button');
+    const triggerLabel = document.createElement('span');
+    const panel = document.createElement('div');
+
+    wrapper.className = 'select-custom date-custom';
+
+    trigger.type = 'button';
+    trigger.id = input.id + '-button';
+    trigger.className = 'select-trigger date-trigger';
+    trigger.setAttribute('aria-haspopup', 'dialog');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.setAttribute('aria-controls', input.id + '-calendar');
+    triggerLabel.className = 'select-trigger-label';
+    trigger.append(triggerLabel);
+
+    panel.id = input.id + '-calendar';
+    panel.className = 'date-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('popover', 'auto');
+
+    panel.innerHTML = `
+        <div class="date-head">
+            <button type="button" class="date-nav" data-step="-1" aria-label="Mois précédent">‹</button>
+            <span class="date-month" aria-live="polite"></span>
+            <button type="button" class="date-nav" data-step="1" aria-label="Mois suivant">›</button>
+        </div>
+        <div class="date-weekdays" aria-hidden="true">
+            ${DATE_PICKER_WEEKDAYS.map((d) => `<span>${d}</span>`).join('')}
+        </div>
+        <div class="date-grid" role="grid"></div>
+        <div class="date-foot">
+            ${clearable ? '<button type="button" class="date-clear">Effacer</button>' : ''}
+            <button type="button" class="date-today">Aujourd'hui</button>
+        </div>`;
+
+    const monthLabel = panel.querySelector('.date-month');
+    const grid = panel.querySelector('.date-grid');
+    const todayBtn = panel.querySelector('.date-today');
+
+    const label = document.querySelector(
+        'label[for="' + input.id + '"]'
+    );
+
+    if (label) {
+        label.htmlFor = trigger.id;
+        label.id ||= input.id + '-label';
+        panel.setAttribute('aria-labelledby', label.id);
+    }
+
+    input.classList.add('visually-hidden');
+    input.tabIndex = -1;
+    input.setAttribute('aria-hidden', 'true');
+    input.after(wrapper);
+    wrapper.append(trigger, panel);
+
+    // Mois affiché et jour qui a le focus clavier.
+    let view = new Date();
+    let focused = new Date();
+    let wasOpen = false;
+
+    function isOpen() {
+        return panel.matches(':popover-open');
+    }
+
+    function sync() {
+        const date = parseIsoDate(nativeValue.get.call(input));
+
+        triggerLabel.textContent = date
+            ? capitalize(date.toLocaleDateString('fr-FR', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            }))
+            : (clearable ? 'Toutes les dates' : 'Choisir une date');
+
+        trigger.classList.toggle('placeholder', !date);
+    }
+
+    function render(focusDay = false) {
+        const selected = nativeValue.get.call(input);
+        const today = isoDate(new Date());
+        const minimum = min() || '';
+
+        monthLabel.textContent = capitalize(
+            view.toLocaleDateString('fr-FR', {
+                month: 'long',
+                year: 'numeric'
+            })
+        );
+
+        // Premier lundi affiché.
+        const first = new Date(view.getFullYear(), view.getMonth(), 1);
+        const start = new Date(first);
+        start.setDate(1 - ((first.getDay() + 6) % 7));
+
+        const focusedIso = isoDate(focused);
+
+        grid.replaceChildren();
+
+        for (let i = 0; i < 42; i++) {
+            const day = new Date(start);
+            day.setDate(start.getDate() + i);
+
+            const iso = isoDate(day);
+            const btn = document.createElement('button');
+
+            btn.type = 'button';
+            btn.className = 'date-day';
+            btn.textContent = day.getDate();
+            btn.dataset.date = iso;
+            btn.tabIndex = iso === focusedIso ? 0 : -1;
+            btn.setAttribute(
+                'aria-label',
+                day.toLocaleDateString('fr-FR', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                })
+            );
+
+            if (day.getMonth() !== view.getMonth()) {
+                btn.classList.add('other-month');
+            }
+
+            if (iso === today) {
+                btn.classList.add('today');
+                btn.setAttribute('aria-current', 'date');
+            }
+
+            if (iso === selected) {
+                btn.classList.add('selected');
+                btn.setAttribute('aria-pressed', 'true');
+            }
+
+            if (minimum && iso < minimum) {
+                btn.disabled = true;
+            }
+
+            grid.append(btn);
+        }
+
+        todayBtn.disabled = Boolean(minimum && today < minimum);
+
+        if (focusDay) {
+            grid.querySelector('[tabindex="0"]')
+                ?.focus({ preventScroll: true });
+        }
+    }
+
+    function moveFocus(date) {
+        focused = date;
+
+        if (
+            date.getMonth() !== view.getMonth()
+            || date.getFullYear() !== view.getFullYear()
+        ) {
+            view = new Date(date.getFullYear(), date.getMonth(), 1);
+        }
+
+        render(true);
+    }
+
+    function open() {
+        if (isOpen() || trigger.disabled) {
+            return;
+        }
+
+        const selected = parseIsoDate(nativeValue.get.call(input));
+        const minimum = parseIsoDate(min());
+        let initial = selected || new Date();
+
+        if (!selected && minimum && minimum > initial) {
+            initial = minimum;
+        }
+
+        focused = initial;
+        view = new Date(initial.getFullYear(), initial.getMonth(), 1);
+
+        panel.showPopover();
+        render();
+        placeFieldPopover(panel, trigger);
+        grid.querySelector('[tabindex="0"]')
+            ?.focus({ preventScroll: true });
+    }
+
+    function close(focusTrigger = true) {
+        if (isOpen()) {
+            panel.hidePopover();
+        }
+
+        if (focusTrigger) {
+            trigger.focus({ preventScroll: true });
+        }
+    }
+
+    function choose(iso) {
+        const changed = nativeValue.get.call(input) !== iso;
+
+        input.value = iso;
+        close();
+
+        if (changed) {
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    Object.defineProperty(input, 'value', {
+        configurable: true,
+        get() {
+            return nativeValue.get.call(input);
+        },
+        set(value) {
+            nativeValue.set.call(input, value);
+            sync();
+        }
+    });
+
+    // Le code existant appelle input.focus() en cas d'erreur.
+    input.focus = (options) => trigger.focus(options);
+
+    // input.disabled (récurrence « Aucune ») → bouton désactivé.
+    new MutationObserver(() => {
+        trigger.disabled = input.disabled;
+
+        if (input.disabled) {
+            close(false);
+        }
+    }).observe(input, { attributes: true, attributeFilter: ['disabled'] });
+
+    trigger.disabled = input.disabled;
+
+    input.form?.addEventListener('reset', () => setTimeout(sync));
+    input.addEventListener('change', sync);
+
+    trigger.addEventListener('pointerdown', () => {
+        wasOpen = isOpen();
+    });
+
+    trigger.addEventListener('click', () => {
+        if (wasOpen) {
+            wasOpen = false;
+            return;
+        }
+
+        open();
+    });
+
+    trigger.addEventListener('keydown', (event) => {
+        if (['ArrowDown', 'ArrowUp'].includes(event.key)) {
+            event.preventDefault();
+            open();
+        }
+    });
+
+    // Échap est géré par le navigateur (popover) : il ne
+    // ferme que le menu, pas la fenêtre « Créer ».
+    panel.addEventListener('toggle', (event) => {
+        const opened = event.newState === 'open';
+
+        trigger.setAttribute('aria-expanded', String(opened));
+        wrapper.classList.toggle('open', opened);
+
+        if (!opened && panel.contains(document.activeElement)) {
+            trigger.focus({ preventScroll: true });
+        }
+    });
+
+    panel.querySelectorAll('.date-nav').forEach((btn) =>
+        btn.addEventListener('click', () => {
+            const step = Number(btn.dataset.step);
+
+            view = new Date(view.getFullYear(), view.getMonth() + step, 1);
+            focused = new Date(
+                view.getFullYear(),
+                view.getMonth(),
+                Math.min(
+                    focused.getDate(),
+                    new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate()
+                )
+            );
+            render();
+            placeFieldPopover(panel, trigger);
+        })
+    );
+
+    grid.addEventListener('click', (event) => {
+        const btn = event.target.closest('.date-day');
+
+        if (btn && !btn.disabled) {
+            choose(btn.dataset.date);
+        }
+    });
+
+    todayBtn.addEventListener('click', () => choose(isoDate(new Date())));
+
+    panel.querySelector('.date-clear')
+        ?.addEventListener('click', () => choose(''));
+
+    panel.addEventListener('keydown', (event) => {
+        const day = event.target.closest?.('.date-day');
+        const offsets = {
+            ArrowLeft: -1,
+            ArrowRight: 1,
+            ArrowUp: -7,
+            ArrowDown: 7
+        };
+
+        if (!day) {
+            return;
+        }
+
+        const next = new Date(focused);
+
+        if (event.key in offsets) {
+            next.setDate(next.getDate() + offsets[event.key]);
+        } else if (event.key === 'PageUp' || event.key === 'PageDown') {
+            next.setMonth(next.getMonth() + (event.key === 'PageUp' ? -1 : 1));
+        } else if (event.key === 'Home') {
+            next.setDate(next.getDate() - ((next.getDay() + 6) % 7));
+        } else if (event.key === 'End') {
+            next.setDate(next.getDate() + (6 - ((next.getDay() + 6) % 7)));
+        } else {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        moveFocus(next);
+    });
+
+    window.addEventListener('resize', () => close(false));
+
+    document.addEventListener(
+        'scroll',
+        () => {
+            if (isOpen()) {
+                placeFieldPopover(panel, trigger);
+            }
+        },
+        true
+    );
+
+    input.closest('dialog')?.addEventListener('close', () => close(false));
+
+    sync();
+}
+
+/* =========================================================
+   SÉLECTEUR D'HEURE : HORLOGE RONDE
+   ---------------------------------------------------------
+   L'<input type="time"> reste la source de vérité (masqué) ;
+   un bouton ouvre une horloge :
+     1. choix de l'heure (24 h : 1–12 à l'extérieur,
+        13–00 à l'intérieur), puis passage aux minutes ;
+     2. choix des minutes (pas de 5) : relâcher valide.
+   Clavier : flèches pour ajuster, Entrée pour avancer /
+   valider. Options :
+     after() → 'HH:MM' : affiche la durée (champ « Fin »).
+   ========================================================= */
+
+const CLOCK_SIZE = 184;
+const CLOCK_OUTER = 74;
+const CLOCK_INNER = 47;
+
+function minutesOf(time) {
+    const match = /^(\d{2}):(\d{2})/.exec(time || '');
+
+    return match ? +match[1] * 60 + +match[2] : null;
+}
+
+function timeOf(minutes) {
+    return String(Math.floor(minutes / 60)).padStart(2, '0')
+        + ':' + String(minutes % 60).padStart(2, '0');
+}
+
+function formatDuration(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+
+    if (h === 0) return m + ' min';
+    if (m === 0) return h + ' h';
+    return h + ' h ' + String(m).padStart(2, '0');
+}
+
+// Position (x, y) d'une graduation sur le cadran.
+function clockPoint(index, radius) {
+    const angle = (index / 12) * 2 * Math.PI;
+    const c = CLOCK_SIZE / 2;
+
+    return [
+        c + radius * Math.sin(angle),
+        c - radius * Math.cos(angle)
+    ];
+}
+
+function enhanceTimeInput(input, { after = () => '' } = {}) {
+    const nativeValue =
+        Object.getOwnPropertyDescriptor(
+            HTMLInputElement.prototype,
+            'value'
+        );
+
+    const svgNs = 'http://www.w3.org/2000/svg';
+
+    const wrapper = document.createElement('div');
+    const trigger = document.createElement('button');
+    const triggerLabel = document.createElement('span');
+    const panel = document.createElement('div');
+
+    wrapper.className = 'select-custom time-custom';
+
+    trigger.type = 'button';
+    trigger.id = input.id + '-button';
+    trigger.className = 'select-trigger time-trigger';
+    trigger.setAttribute('aria-haspopup', 'dialog');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.setAttribute('aria-controls', input.id + '-clock');
+    triggerLabel.className = 'select-trigger-label';
+    trigger.append(triggerLabel);
+
+    panel.id = input.id + '-clock';
+    panel.className = 'clock-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('popover', 'auto');
+
+    panel.innerHTML = `
+        <div class="clock-head">
+            <div class="clock-readout">
+                <button type="button" class="clock-seg" data-mode="hours" aria-label="Heures"></button>
+                <span class="clock-colon">:</span>
+                <button type="button" class="clock-seg" data-mode="minutes" aria-label="Minutes"></button>
+            </div>
+            <span class="clock-duration"></span>
+        </div>
+        <div class="clock-dial" tabindex="0" role="slider" aria-valuemin="0" style="width: ${CLOCK_SIZE}px; height: ${CLOCK_SIZE}px">
+            <svg class="clock-hand" width="${CLOCK_SIZE}" height="${CLOCK_SIZE}" aria-hidden="true">
+                <line></line>
+                <circle class="clock-knob"></circle>
+                <circle class="clock-pivot" r="3" cx="${CLOCK_SIZE / 2}" cy="${CLOCK_SIZE / 2}"></circle>
+            </svg>
+            <div class="clock-numbers" aria-hidden="true"></div>
+        </div>
+        <div class="clock-foot">
+            <button type="button" class="clock-cancel">Annuler</button>
+            <button type="button" class="clock-ok">OK</button>
+        </div>`;
+
+    const hourSeg = panel.querySelector('[data-mode="hours"]');
+    const minuteSeg = panel.querySelector('[data-mode="minutes"]');
+    const durationLabel = panel.querySelector('.clock-duration');
+    const dial = panel.querySelector('.clock-dial');
+    const handLine = panel.querySelector('.clock-hand line');
+    const knob = panel.querySelector('.clock-knob');
+    const numbers = panel.querySelector('.clock-numbers');
+
+    const label = document.querySelector(
+        'label[for="' + input.id + '"]'
+    );
+
+    if (label) {
+        label.htmlFor = trigger.id;
+        label.id ||= input.id + '-label';
+        panel.setAttribute('aria-labelledby', label.id);
+        dial.setAttribute('aria-labelledby', label.id);
+    }
+
+    input.classList.add('visually-hidden');
+    input.tabIndex = -1;
+    input.setAttribute('aria-hidden', 'true');
+    input.after(wrapper);
+    wrapper.append(trigger, panel);
+
+    // Brouillon affiché sur l'horloge (validé par OK / minutes).
+    let hour = 9;
+    let minute = 0;
+    let mode = 'hours';
+    let dragging = false;
+    let wasOpen = false;
+
+    function isOpen() {
+        return panel.matches(':popover-open');
+    }
+
+    function sync() {
+        const value = nativeValue.get.call(input);
+
+        triggerLabel.textContent = value ? value.slice(0, 5) : '--:--';
+        trigger.classList.toggle('placeholder', !value);
+    }
+
+    function renderNumbers() {
+        numbers.replaceChildren();
+
+        const add = (text, index, radius, value, inner) => {
+            const [x, y] = clockPoint(index, radius);
+            const span = document.createElement('span');
+
+            span.className = 'clock-num' + (inner ? ' inner' : '');
+            span.textContent = text;
+            span.dataset.value = value;
+            span.style.left = x + 'px';
+            span.style.top = y + 'px';
+            numbers.append(span);
+        };
+
+        if (mode === 'hours') {
+            for (let i = 0; i < 12; i++) {
+                add(String(i === 0 ? 12 : i), i, CLOCK_OUTER, i === 0 ? 12 : i, false);
+                add(i === 0 ? '00' : String(i + 12), i, CLOCK_INNER, i === 0 ? 0 : i + 12, true);
+            }
+        } else {
+            for (let i = 0; i < 12; i++) {
+                add(String(i * 5).padStart(2, '0'), i, CLOCK_OUTER, i * 5, false);
+            }
+        }
+    }
+
+    function render() {
+        const c = CLOCK_SIZE / 2;
+
+        hourSeg.textContent = String(hour).padStart(2, '0');
+        minuteSeg.textContent = String(minute).padStart(2, '0');
+        hourSeg.classList.toggle('active', mode === 'hours');
+        minuteSeg.classList.toggle('active', mode === 'minutes');
+        hourSeg.setAttribute('aria-pressed', String(mode === 'hours'));
+        minuteSeg.setAttribute('aria-pressed', String(mode === 'minutes'));
+
+        panel.classList.toggle('minutes', mode === 'minutes');
+
+        // Aiguille.
+        let index;
+        let radius;
+
+        if (mode === 'hours') {
+            index = hour % 12;
+            radius = hour === 0 || hour > 12 ? CLOCK_INNER : CLOCK_OUTER;
+        } else {
+            index = minute / 5;
+            radius = CLOCK_OUTER;
+        }
+
+        const [x, y] = clockPoint(index, radius);
+
+        handLine.setAttribute('x1', c);
+        handLine.setAttribute('y1', c);
+        handLine.setAttribute('x2', x);
+        handLine.setAttribute('y2', y);
+        knob.setAttribute('cx', x);
+        knob.setAttribute('cy', y);
+        knob.setAttribute('r', radius === CLOCK_INNER ? 12 : 14);
+
+        const current = mode === 'hours' ? hour : minute;
+
+        for (const num of numbers.children) {
+            num.classList.toggle('selected', Number(num.dataset.value) === current);
+        }
+
+        // Minutes hors graduation (ex. 17) : aiguille seule.
+        knob.classList.toggle('between', mode === 'minutes' && minute % 5 !== 0);
+
+        dial.setAttribute('aria-valuemax', mode === 'hours' ? '23' : '59');
+        dial.setAttribute('aria-valuenow', String(current));
+        dial.setAttribute(
+            'aria-valuetext',
+            mode === 'hours' ? hour + ' heures' : minute + ' minutes'
+        );
+
+        // Durée (champ « Fin »).
+        const from = minutesOf(after());
+        const total = hour * 60 + minute;
+
+        if (from === null) {
+            durationLabel.textContent = '';
+        } else if (total > from) {
+            durationLabel.textContent = 'Durée : ' + formatDuration(total - from);
+            durationLabel.classList.remove('warn');
+        } else {
+            durationLabel.textContent = 'Avant le début';
+            durationLabel.classList.add('warn');
+        }
+    }
+
+    function setMode(next) {
+        mode = next;
+        renderNumbers();
+        render();
+    }
+
+    // Valeur pointée sur le cadran (angle + distance au centre).
+    function valueAt(event) {
+        const rect = dial.getBoundingClientRect();
+        const dx = event.clientX - rect.left - rect.width / 2;
+        const dy = event.clientY - rect.top - rect.height / 2;
+        const angle = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+        const distance = Math.hypot(dx, dy);
+
+        if (mode === 'hours') {
+            const index = Math.round(angle / 30) % 12;
+            const inner = distance < (CLOCK_OUTER + CLOCK_INNER) / 2;
+
+            return inner
+                ? (index === 0 ? 0 : index + 12)
+                : (index === 0 ? 12 : index);
+        }
+
+        return (Math.round(angle / 30) * 5) % 60;
+    }
+
+    function pick(event) {
+        const value = valueAt(event);
+
+        if (mode === 'hours') {
+            hour = value;
+        } else {
+            minute = value;
+        }
+
+        render();
+    }
+
+    function open() {
+        if (isOpen() || trigger.disabled) {
+            return;
+        }
+
+        const value = minutesOf(nativeValue.get.call(input));
+        const from = minutesOf(after());
+        const initial =
+            value ?? (from !== null ? Math.min(from + 60, 23 * 60 + 55) : 9 * 60);
+
+        hour = Math.floor(initial / 60);
+        minute = initial % 60;
+
+        panel.showPopover();
+        setMode('hours');
+        placeFieldPopover(panel, trigger);
+        dial.focus({ preventScroll: true });
+    }
+
+    function close(focusTrigger = true) {
+        if (isOpen()) {
+            panel.hidePopover();
+        }
+
+        if (focusTrigger) {
+            trigger.focus({ preventScroll: true });
+        }
+    }
+
+    function commit() {
+        const time = timeOf(hour * 60 + minute);
+        const changed = nativeValue.get.call(input) !== time;
+
+        input.value = time;
+        close();
+
+        if (changed) {
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    dial.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0) {
+            return;
+        }
+
+        event.preventDefault();
+        dragging = true;
+        dial.setPointerCapture(event.pointerId);
+        dial.focus({ preventScroll: true });
+        pick(event);
+    });
+
+    dial.addEventListener('pointermove', (event) => {
+        if (dragging) {
+            pick(event);
+        }
+    });
+
+    dial.addEventListener('pointerup', (event) => {
+        if (!dragging) {
+            return;
+        }
+
+        dragging = false;
+        pick(event);
+
+        if (mode === 'hours') {
+            setMode('minutes');
+        } else {
+            commit();
+        }
+    });
+
+    dial.addEventListener('pointercancel', () => {
+        dragging = false;
+    });
+
+    dial.addEventListener('keydown', (event) => {
+        const delta = {
+            ArrowUp: 1,
+            ArrowRight: 1,
+            ArrowDown: -1,
+            ArrowLeft: -1,
+            PageUp: 3,
+            PageDown: -3
+        }[event.key];
+
+        if (delta) {
+            if (mode === 'hours') {
+                hour = (hour + delta + 24) % 24;
+            } else {
+                minute = (Math.round(minute / 5) * 5 + delta * 5 + 60) % 60;
+            }
+
+            render();
+        } else if (event.key === 'Enter' || event.key === ' ') {
+            if (mode === 'hours') {
+                setMode('minutes');
+            } else {
+                commit();
+            }
+        } else {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+    });
+
+    hourSeg.addEventListener('click', () => {
+        setMode('hours');
+        dial.focus({ preventScroll: true });
+    });
+
+    minuteSeg.addEventListener('click', () => {
+        setMode('minutes');
+        dial.focus({ preventScroll: true });
+    });
+
+    panel.querySelector('.clock-ok').addEventListener('click', commit);
+    panel.querySelector('.clock-cancel').addEventListener('click', () => close());
+
+    Object.defineProperty(input, 'value', {
+        configurable: true,
+        get() {
+            return nativeValue.get.call(input);
+        },
+        set(value) {
+            nativeValue.set.call(input, value);
+            sync();
+        }
+    });
+
+    input.focus = (options) => trigger.focus(options);
+
+    input.form?.addEventListener('reset', () => setTimeout(sync));
+    input.addEventListener('change', sync);
+
+    trigger.addEventListener('pointerdown', () => {
+        wasOpen = isOpen();
+    });
+
+    trigger.addEventListener('click', () => {
+        if (wasOpen) {
+            wasOpen = false;
+            return;
+        }
+
+        open();
+    });
+
+    trigger.addEventListener('keydown', (event) => {
+        if (['ArrowDown', 'ArrowUp'].includes(event.key)) {
+            event.preventDefault();
+            open();
+        }
+    });
+
+    // Échap est géré par le navigateur (popover) : il ne
+    // ferme que l'horloge, pas la fenêtre « Créer ».
+    panel.addEventListener('toggle', (event) => {
+        const opened = event.newState === 'open';
+
+        trigger.setAttribute('aria-expanded', String(opened));
+        wrapper.classList.toggle('open', opened);
+
+        if (!opened) {
+            dragging = false;
+
+            if (panel.contains(document.activeElement)) {
+                trigger.focus({ preventScroll: true });
+            }
+        }
+    });
+
+    window.addEventListener('resize', () => close(false));
+
+    document.addEventListener(
+        'scroll',
+        () => {
+            if (isOpen()) {
+                placeFieldPopover(panel, trigger);
+            }
+        },
+        true
+    );
+
+    input.closest('dialog')?.addEventListener('close', () => close(false));
+
+    sync();
+}
+
+enhanceSelect(tacheRecurrence);
+enhanceDateInput(tacheDate);
+enhanceTimeInput(tacheStart);
+enhanceTimeInput(tacheEnd, { after: () => tacheStart.value });
+enhanceDateInput(tacheRecurrenceEnd, { min: () => tacheDate.value });
+
+if (searchDate) {
+    enhanceDateInput(searchDate, { clearable: true });
+}
+
+if (searchAgenda) {
+    enhanceSelect(searchAgenda);
+}
 
 
 updateRecurrenceEndVisibility();
