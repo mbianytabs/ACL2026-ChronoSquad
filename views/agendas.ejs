@@ -877,19 +877,6 @@
             </div>
 
 
-            <!-- IMPORT D'AGENDA (.ics) -->
-
-            <button
-                id="import-btn"
-                type="button"
-                class="import-link"
-                aria-haspopup="dialog"
-                aria-controls="import-dialog"
-            >
-                <span aria-hidden="true">📅</span>
-                Importer un calendrier (.ics)
-            </button>
-
         </fieldset>
 
 
@@ -923,6 +910,36 @@
                 class="btn btn-glass"
             >
                 Annuler
+            </button>
+
+
+            <!-- IMPORT D'AGENDA (.ics) : onglet Agenda uniquement -->
+
+            <button
+                id="import-btn"
+                type="button"
+                class="btn btn-glass import-btn"
+                aria-haspopup="dialog"
+                aria-controls="import-dialog"
+                title="Importer un calendrier depuis un fichier .ics"
+                aria-label="Importer un calendrier (.ics)"
+                hidden
+            >
+                <svg
+                    viewBox="0 0 20 20"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.7"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                >
+                    <path d="M10 3v9M6.5 8.5 10 12l3.5-3.5"/>
+                    <path d="M3.5 13.5v1.5a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-1.5"/>
+                </svg>
+                <span class="import-btn-label">Importer (.ics)</span>
             </button>
 
 

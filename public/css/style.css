@@ -2051,6 +2051,14 @@ body:has(> .home) {
 .agenda-list li {
     display: flex;
     align-items: center;
+    min-width: 0;
+}
+
+/* Nom long : le libellé rétrécit (le nom se termine par « … »)
+   au lieu de pousser les boutons hors de la barre latérale. */
+.agenda-list li > .agenda-item {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .agenda-edit {
@@ -2293,35 +2301,35 @@ body:has(> .home) {
    IMPORT D'AGENDA (.ics)
    ========================================================= */
 
-/* Lien en bas de l'onglet « Agenda » de la fenêtre « Créer ». */
-.import-link {
-    display: flex;
+/* Bouton « Importer » dans le pied de la fenêtre « Créer »
+   (onglet Agenda) : Annuler à gauche, Importer au milieu,
+   Créer l'agenda à droite. */
+.sheet-footer .import-btn {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
     gap: 8px;
-    align-self: center;
-    margin: 4px auto 0;
-    padding: 8px 16px;
-    font: inherit;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--muted);
-    background: transparent;
-    border: 1.5px dashed rgba(28, 30, 58, 0.18);
-    border-radius: 999px;
-    cursor: pointer;
-    transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+    margin-right: auto;
 }
 
-.import-link:hover,
-.import-link:focus-visible {
-    color: var(--text);
-    border-color: rgba(28, 30, 58, 0.35);
-    background: rgba(255, 255, 255, 0.55);
-}
-
-.import-link[hidden] {
+.sheet-footer .import-btn[hidden] {
     display: none;
+}
+
+.sheet-footer:has(.import-btn:not([hidden])) #cancel-btn {
+    margin-right: auto;
+}
+
+/* Écran étroit : bouton réduit à son icône. */
+@media (max-width: 480px) {
+    .sheet-footer .import-btn {
+        width: 44px;
+        padding: 0;
+        justify-content: center;
+    }
+
+    .sheet-footer .import-btn .import-btn-label {
+        display: none;
+    }
 }
 
 /* Comme la fenêtre « Créer » : en bas au centre de l'écran. */

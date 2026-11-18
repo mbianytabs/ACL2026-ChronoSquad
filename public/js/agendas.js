@@ -2892,7 +2892,7 @@ function setKind(kind) {
         isTache;
 
     importBtn.hidden =
-        editing !== null;
+        isTache || editing !== null;
 
     dialogError.hidden =
         true;
