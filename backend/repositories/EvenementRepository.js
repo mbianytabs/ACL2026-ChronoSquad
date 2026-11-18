@@ -16,7 +16,8 @@ function toEvenement(row) {
         row.description,
         row.location,
         row.recurrence_frequency ?? null,
-        row.recurrence_end_date ?? null
+        row.recurrence_end_date ?? null,
+        Boolean(row.all_day)
     );
 }
 
@@ -71,9 +72,10 @@ export class EvenementRepository {
                 description,
                 location,
                 recurrence_frequency,
-                recurrence_end_date
+                recurrence_end_date,
+                all_day
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id,
                 agendaId,
@@ -83,7 +85,8 @@ export class EvenementRepository {
                 evenement.description,
                 evenement.location,
                 evenement.recurrenceFrequency ?? null,
-                evenement.recurrenceEndDate ?? null
+                evenement.recurrenceEndDate ?? null,
+                evenement.allDay ? 1 : 0
             ]
         );
 
@@ -126,7 +129,8 @@ export class EvenementRepository {
                  description = ?,
                  location = ?,
                  recurrence_frequency = ?,
-                 recurrence_end_date = ?
+                 recurrence_end_date = ?,
+                 all_day = ?
              WHERE id = ?`,
             [
                 evenement.agendaId,
@@ -137,6 +141,7 @@ export class EvenementRepository {
                 evenement.location,
                 evenement.recurrenceFrequency ?? null,
                 evenement.recurrenceEndDate ?? null,
+                evenement.allDay ? 1 : 0,
                 id
             ]
         );

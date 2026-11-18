@@ -18,7 +18,8 @@ function recurrenceRule(evenement) {
         rule += ";BYMONTH=2;BYMONTHDAY=28,29;BYSETPOS=-1";
     }
     if (evenement.recurrenceEndDate) {
-        rule += ";UNTIL=" + evenement.recurrenceEndDate.replaceAll("-", "") + "T235959Z";
+        rule += ";UNTIL=" + evenement.recurrenceEndDate.replaceAll("-", "");
+        if (!evenement.allDay) rule += "T235959Z";
     }
     return rule;
 }
@@ -30,7 +31,7 @@ function readRecurrence(element) {
     if (!element.rrule) return { frequency: null, endDate: null };
 
     const options = element.rrule.origOptions;
-    if (options.tzid && !["UTC", "Etc/UTC", "GMT"].includes(options.tzid)) {
+    if (element.datetype !== "date" && options.tzid && !["UTC", "Etc/UTC", "GMT"].includes(options.tzid)) {
         throw new Error("Les récurrences avec un fuseau local ne sont pas prises en charge ; utilisez des horaires UTC.");
     }
     const line = element.rrule.toString().split(/\r?\n/).find(line => line.startsWith("RRULE:"));
@@ -53,7 +54,7 @@ function readRecurrence(element) {
     let endDate = null;
     if (options.until) {
         const until = new Date(options.until);
-        if (until.toISOString().slice(11, 19) < element.start.toISOString().slice(11, 19)) {
+        if (element.datetype !== "date" && until.toISOString().slice(11, 19) < element.start.toISOString().slice(11, 19)) {
             until.setUTCDate(until.getUTCDate() - 1);
         }
         endDate = until.toISOString().slice(0, 10);
@@ -78,6 +79,7 @@ export class ICalendarService {
                 summary: evenement.title,
                 description: evenement.description,
                 location: evenement.location,
+                allDay: evenement.allDay ?? false,
                 repeating: recurrenceRule(evenement)
             });
         }
@@ -131,8 +133,14 @@ export class ICalendarService {
             if (element.type !== "VEVENT") {
                 throw new Error("Seuls les événements de calendrier sont pris en charge.");
             }
-            if (element.datetype === "date") {
-                throw new Error("Les événements sur une journée entière ne sont pas encore pris en charge.");
+            const allDay = element.datetype === "date";
+            if (allDay) {
+                if (!(element.start instanceof Date) || !(element.end instanceof Date) ||
+                    !element.start.dateOnly || !element.end.dateOnly) {
+                    throw new Error("Une journée entière doit avoir des dates de début et de fin sans heures.");
+                }
+                element.start = new Date(Date.UTC(element.start.getFullYear(), element.start.getMonth(), element.start.getDate()));
+                element.end = new Date(Date.UTC(element.end.getFullYear(), element.end.getMonth(), element.end.getDate()));
             }
             if (typeof element.summary !== "string" || !element.summary.trim()) {
                 throw new Error("Chaque événement doit avoir un titre.");
@@ -155,7 +163,8 @@ export class ICalendarService {
                 description,
                 location,
                 recurrenceFrequency: recurrence.frequency,
-                recurrenceEndDate: recurrence.endDate
+                recurrenceEndDate: recurrence.endDate,
+                allDay
             });
         }
         if (evenements.length !== nombreEvenements) {

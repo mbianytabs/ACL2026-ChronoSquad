@@ -34,6 +34,7 @@ export class SQLiteDatabase {
             this.initializeSchema();
             this.migrateEventRecurrence();
             this.migrateYearlyRecurrence();
+            this.migrateAllDayEvents();
 
             if (this.get("PRAGMA user_version").user_version >= 1) {
                 this.connection.exec("PRAGMA user_version = 3");
@@ -277,6 +278,13 @@ export class SQLiteDatabase {
         console.log(
             "Migration 005 : la récurrence annuelle est maintenant autorisée."
         );
+    }
+
+    migrateAllDayEvents() {
+        const columns = this.all("PRAGMA table_info(evenement)");
+        if (!columns.some(column => column.name === "all_day")) {
+            this.connection.exec("ALTER TABLE evenement ADD COLUMN all_day INTEGER NOT NULL DEFAULT 0 CHECK (all_day IN (0, 1))");
+        }
     }
 
     get(sql, params = []) {

@@ -10,13 +10,15 @@ export class Evenement{
     #location;
     #recurrenceFrequency;
     #recurrenceEndDate;
-    constructor(id, agendaId,title, start, end, description="" , location="",recurrenceFrequency = null,recurrenceEndDate = null){
+    #allDay;
+    constructor(id, agendaId,title, start, end, description="" , location="",recurrenceFrequency = null,recurrenceEndDate = null, allDay = false){
         if ((id !== null && !id) || !agendaId) {
             throw new Error("id et agendaId sont obligatoires");
         }
 
         Evenement.#validateTitle(title);
         Evenement.#validateDates(start, end);
+        Evenement.#validateAllDay(start, end, allDay);
          const recurrence = Evenement.#validateRecurrence(
             start,
             recurrenceFrequency,
@@ -30,6 +32,7 @@ export class Evenement{
         this.#end = new Date(end);
         this.#description = description;
         this.#location = location;
+        this.#allDay = allDay;
          this.#recurrenceFrequency = recurrence.frequency;
         this.#recurrenceEndDate = recurrence.endDate;
     }
@@ -41,6 +44,17 @@ export class Evenement{
     get end() { return new Date(this.#end); }
     get description() { return this.#description; }
     get location() { return this.#location; }
+    get allDay() { return this.#allDay; }
+
+    static #validateAllDay(start, end, allDay) {
+        if (typeof allDay !== "boolean") {
+            throw new Error("allDay doit être un booléen.");
+        }
+        if (allDay && (!new Date(start).toISOString().endsWith("T00:00:00.000Z") ||
+            !new Date(end).toISOString().endsWith("T00:00:00.000Z"))) {
+            throw new Error("Une journée entière doit utiliser des dates à minuit UTC, avec une fin exclusive.");
+        }
+    }
 
 static #validateTitle(title) {
     if (typeof title !== "string" || title.trim().length === 0) {
@@ -106,6 +120,7 @@ static #validateRecurrence(start, frequency, endDate) {
     }
     newSchedule(newStart, newEnd){
         Evenement.#validateDates(newStart,newEnd);
+        Evenement.#validateAllDay(newStart, newEnd, this.#allDay);
         this.#start = new Date(newStart);
         this.#end = new Date(newEnd);
     }
@@ -128,7 +143,8 @@ static #validateRecurrence(start, frequency, endDate) {
             description: this.#description,
             location: this.#location,
             recurrenceFrequency: this.#recurrenceFrequency,
-            recurrenceEndDate: this.#recurrenceEndDate
+            recurrenceEndDate: this.#recurrenceEndDate,
+            allDay: this.#allDay
         };
     }
 

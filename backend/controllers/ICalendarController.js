@@ -23,7 +23,7 @@ export class ICalendarController {
             data = await ICalendarService.lire(req.body?.contenu);
             agenda = new Agenda(null, req.body?.name ?? data.name, req.user.id, req.body?.color ?? data.color);
             evenements = data.evenements.map(event => new Evenement(null, "import", event.title,
-                event.start, event.end, event.description, event.location, event.recurrenceFrequency, event.recurrenceEndDate));
+                event.start, event.end, event.description, event.location, event.recurrenceFrequency, event.recurrenceEndDate, event.allDay));
         } catch (error) {
             throw createError(400, error.message);
         }

@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS evenement (
     start TEXT NOT NULL CHECK (julianday(start) IS NOT NULL),
     end TEXT NOT NULL CHECK (julianday(end) IS NOT NULL AND julianday(end) > julianday(start)),
     location TEXT NOT NULL DEFAULT '',
-    description TEXT NOT NULL DEFAULT ''
+    description TEXT NOT NULL DEFAULT '',
+    all_day INTEGER NOT NULL DEFAULT 0 CHECK (all_day IN (0, 1))
 ) STRICT;
 
 CREATE INDEX IF NOT EXISTS agenda_owner_idx ON agenda(owner_id);

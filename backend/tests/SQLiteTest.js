@@ -32,7 +32,7 @@ test("migration des anciens identifiants : comptes, agendas et événements cons
             old.prepare("INSERT INTO user VALUES (?, ?, ?, ?)").run("old-uuid", "alice", "hash-conserve", date);
             old.prepare("INSERT INTO user VALUES (?, ?, ?, ?)").run("test-user", "sqlite_demo", "hash-demo", date);
             old.prepare("INSERT INTO agenda VALUES (?, ?, ?, ?, ?)").run("a1", "Personnel", "#3b82f6", "old-uuid", date);
-            old.prepare("INSERT INTO evenement VALUES (?, ?, ?, ?, ?, ?, ?)")
+            old.prepare("INSERT INTO evenement (id, agenda_id, title, start, end, location, description) VALUES (?, ?, ?, ?, ?, ?, ?)")
                 .run("e1", "a1", "Cours", date, "2026-10-11T11:00:00.000Z", "Salle", "Description");
         } finally { old.close(); }
         db = new SQLiteDatabase(path);

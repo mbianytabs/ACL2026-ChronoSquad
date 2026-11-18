@@ -6,7 +6,7 @@ import { RecurrenceService } from "../services/RecurrenceService.js";
 import { evenementChevauchePeriode } from "../services/RechercheService.js";
 
 
-function readEvenement(body, id, agendaId) {
+function readEvenement(body, id, agendaId, allDay = false) {
     if (
         typeof body?.title !== "string" ||
         typeof body?.start !== "string" ||
@@ -20,7 +20,8 @@ function readEvenement(body, id, agendaId) {
             typeof body.recurrenceFrequency !== "string") ||
         (body.recurrenceEndDate !== undefined &&
             body.recurrenceEndDate !== null &&
-            typeof body.recurrenceEndDate !== "string")
+            typeof body.recurrenceEndDate !== "string") ||
+        (body.allDay !== undefined && typeof body.allDay !== "boolean")
     ) {
         throw createError(
             400,
@@ -38,7 +39,8 @@ function readEvenement(body, id, agendaId) {
             body.description,
             body.location,
             body.recurrenceFrequency ?? null,
-            body.recurrenceEndDate ?? null
+            body.recurrenceEndDate ?? null,
+            body.allDay ?? allDay
         );
     } catch (error) {
         throw createError(400, error.message);
@@ -137,7 +139,7 @@ export class EvenementController {
         if (!agenda || !await agendas.hasAccess(agenda.id, req.user.id)) {
             throw createError(404, "Agenda introuvable.");
         }
-        const evenement = readEvenement(req.body, current.id, agenda.id);
+        const evenement = readEvenement(req.body, current.id, agenda.id, current.allDay);
         const updated = await evenements.update(current.id, evenement);
         if (!updated) {
             throw createError(404, "Événement introuvable.");
