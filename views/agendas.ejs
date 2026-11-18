@@ -229,6 +229,18 @@
     <!-- UTILISATEUR -->
     <div class="user">
 
+        <!-- IMPORT D'AGENDA (.ics) -->
+        <button
+            id="import-btn"
+            type="button"
+            class="btn btn-glass"
+            aria-haspopup="dialog"
+            aria-controls="import-dialog"
+            title="Importer un agenda depuis un fichier .ics"
+        >
+            Importer
+        </button>
+
         <span id="current-user">
             <%= locals.user ? user.username : '' %>
         </span>
@@ -275,6 +287,7 @@
                     Créer
                 </span>
             </button>
+
 
 
             <%- include('partials/error') %>
@@ -1229,7 +1242,149 @@
 </dialog>
 
 
+<!-- ====================================================== -->
+<!-- DIALOG : IMPORT D'AGENDA (.ics)                        -->
+<!-- ====================================================== -->
+
+<dialog
+    id="import-dialog"
+    class="event-pop import-pop"
+    aria-labelledby="import-title"
+>
+
+    <form
+        id="import-form"
+        class="event-pop-inner"
+        novalidate
+    >
+
+        <div class="event-pop-head">
+
+            <span
+                class="event-pop-dot"
+                aria-hidden="true"
+            ></span>
+
+            <h2 id="import-title">Importer un agenda</h2>
+
+            <button
+                id="import-close"
+                type="button"
+                class="btn btn-glass btn-round btn-small"
+                aria-label="Fermer"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <label
+            id="import-drop"
+            class="import-drop"
+            for="import-file"
+        >
+            <span
+                class="import-drop-icon"
+                aria-hidden="true"
+            >📅</span>
+
+            <span id="import-drop-label">
+                Choisir un fichier .ics
+            </span>
+
+            <span class="import-drop-hint">
+                ou le glisser ici
+            </span>
+
+            <input
+                id="import-file"
+                type="file"
+                accept=".ics,text/calendar"
+                class="visually-hidden"
+            >
+        </label>
+
+
+        <div
+            id="import-preview"
+            class="import-preview"
+            hidden
+        >
+
+            <label for="import-name">
+                Nom du nouvel agenda
+            </label>
+
+            <div class="import-name-row">
+
+                <input
+                    id="import-name"
+                    type="text"
+                    maxlength="100"
+                    autocomplete="off"
+                    required
+                >
+
+                <input
+                    id="import-color"
+                    type="color"
+                    value="#3b82f6"
+                    aria-label="Couleur de l'agenda"
+                >
+
+            </div>
+
+
+            <h3
+                id="import-count"
+                class="share-subtitle"
+            ></h3>
+
+            <ul
+                id="import-list"
+                class="share-list import-list"
+                aria-labelledby="import-count"
+            ></ul>
+
+            <ul
+                id="import-warnings"
+                class="import-warnings"
+                hidden
+            ></ul>
+
+        </div>
+
+
+        <p
+            id="import-error"
+            class="error"
+            role="alert"
+            hidden
+        ></p>
+
+
+        <div class="event-actions">
+
+            <button
+                id="import-submit"
+                type="submit"
+                class="btn btn-primary"
+                disabled
+            >
+                Importer
+            </button>
+
+        </div>
+
+    </form>
+
+</dialog>
+
+
 <!-- SCRIPT -->
+
+<script src="/js/ics.js"></script>
 
 <%- include('partials/scripts', { script: 'agendas.js' }) %>
 

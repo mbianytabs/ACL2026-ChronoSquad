@@ -2270,3 +2270,130 @@ body:has(> .home) {
     opacity: 0.45;
     cursor: default;
 }
+
+
+/* =========================================================
+   IMPORT D'AGENDA (.ics)
+   ========================================================= */
+
+.import-pop {
+    --agenda-color: #3b82f6;
+    width: 380px;
+}
+
+/* Ouverte sous l'en-tête : hauteur limitée à l'espace restant. */
+.import-pop,
+.import-pop .event-pop-inner {
+    max-height: calc(100dvh - var(--y, 0px) - 16px);
+}
+
+.import-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    margin: 16px 0 0;
+    padding: 18px 14px;
+    text-align: center;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.55);
+    border: 1.5px dashed rgba(28, 30, 58, 0.22);
+    border-radius: 14px;
+    transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.import-drop:focus-within,
+.import-drop.dragging {
+    border-color: var(--agenda-color);
+    background: color-mix(in srgb, var(--agenda-color) 8%, #ffffff);
+}
+
+.import-drop-icon {
+    font-size: 1.5rem;
+    line-height: 1.2;
+}
+
+#import-drop-label {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.import-drop-hint {
+    font-size: 0.8125rem;
+    font-weight: 400;
+    color: var(--muted);
+}
+
+.import-preview {
+    margin-top: 16px;
+}
+
+.import-name-row {
+    display: flex;
+    gap: 8px;
+}
+
+.import-name-row input[type="color"] {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    padding: 4px;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(28, 30, 58, 0.14);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.import-list {
+    max-height: 200px;
+}
+
+.import-list li {
+    display: flex;
+    flex-direction: column;
+    padding: 6px 10px;
+    font-size: 0.875rem;
+}
+
+.import-list .import-ev-title {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.import-list .import-ev-when,
+.import-list .import-more {
+    font-size: 0.8125rem;
+    color: var(--muted);
+}
+
+.import-warnings {
+    margin: 10px 0 0;
+    padding: 10px 14px 10px 28px;
+    font-size: 0.8125rem;
+    color: #8a5a00;
+    background: rgba(245, 165, 36, 0.14);
+    border-radius: var(--radius-sm);
+}
+
+.import-pop .error {
+    margin-top: 10px;
+}
+
+.import-pop .btn.btn-primary {
+    margin: 0;
+    height: 40px;
+    padding: 0 20px;
+    font-size: 0.875rem;
+}
+
+.import-pop .btn.btn-primary:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.import-preview > label {
+    display: block;
+    margin-top: 0;
+}

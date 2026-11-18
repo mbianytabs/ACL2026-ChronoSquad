@@ -4432,6 +4432,349 @@ document.addEventListener(
 );
 
 
+/* =========================================================
+   IMPORT D'AGENDA (.ics) — US-13
+   ---------------------------------------------------------
+   1. l'utilisateur choisit (ou dépose) un fichier .ics ;
+   2. le fichier est lu dans le navigateur (IcsParser) et
+      un aperçu des événements est affiché ;
+   3. « Importer » envoie l'agenda et ses événements au
+      serveur (api.importAgenda), puis l'agenda importé est
+      affiché dans le calendrier.
+   ========================================================= */
+
+const importBtn = document.getElementById('import-btn');
+const importDialog = document.getElementById('import-dialog');
+const importForm = document.getElementById('import-form');
+const importDrop = document.getElementById('import-drop');
+const importDropLabel = document.getElementById('import-drop-label');
+const importFile = document.getElementById('import-file');
+const importPreview = document.getElementById('import-preview');
+const importName = document.getElementById('import-name');
+const importColor = document.getElementById('import-color');
+const importCount = document.getElementById('import-count');
+const importList = document.getElementById('import-list');
+const importWarnings = document.getElementById('import-warnings');
+const importError = document.getElementById('import-error');
+const importSubmit = document.getElementById('import-submit');
+
+const IMPORT_MAX_SIZE = 5 * 1024 * 1024;
+const IMPORT_PREVIEW_COUNT = 5;
+
+let importData = null;
+let importing = false;
+
+function showImportError(message) {
+    importError.textContent = message;
+    importError.hidden = false;
+}
+
+function setImportColor(color) {
+    importColor.value = color;
+    importDialog.style.setProperty('--agenda-color', color);
+}
+
+function resetImport() {
+    importData = null;
+    importForm.reset();
+    importDropLabel.textContent = 'Choisir un fichier .ics';
+    importPreview.hidden = true;
+    importWarnings.hidden = true;
+    importError.hidden = true;
+    importSubmit.disabled = true;
+    setImportColor('#3b82f6');
+}
+
+// Le bouton est dans l'en-tête : la fenêtre s'ouvre juste
+// en dessous, alignée sur son bord droit.
+function placeImportDialog() {
+    const margin = 16;
+    const rect = importBtn.getBoundingClientRect();
+    const width = importDialog.offsetWidth;
+
+    const x = Math.min(
+        Math.max(margin, rect.right - width),
+        window.innerWidth - margin - width
+    );
+
+    importDialog.style.setProperty('--x', x + 'px');
+    importDialog.style.setProperty('--y', rect.bottom + 10 + 'px');
+    importDialog.dataset.side = 'left';
+}
+
+function openImport() {
+    resetImport();
+    importDialog.showModal();
+    placeImportDialog();
+}
+
+function closeImport() {
+    if (!importing) {
+        importDialog.close();
+    }
+}
+
+function formatImportWhen(ev) {
+    const start = new Date(ev.start);
+    const end = new Date(ev.end);
+
+    const day = start.toLocaleDateString('fr-FR', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+    });
+
+    const allDay =
+        start.getHours() === 0 && start.getMinutes() === 0
+        && end.getHours() === 0 && end.getMinutes() === 0;
+
+    let when = allDay
+        ? day + ' · journée entière'
+        : day + ' · ' + formatTime(start) + ' – ' + formatTime(end);
+
+    const frequencies = {
+        daily: 'tous les jours',
+        weekly: 'toutes les semaines',
+        monthly: 'tous les mois',
+        yearly: 'tous les ans'
+    };
+
+    if (ev.recurrenceFrequency) {
+        when += ' · ' + frequencies[ev.recurrenceFrequency];
+    }
+
+    return when;
+}
+
+function renderImportPreview(fileName) {
+    const { evenements, warnings } = importData;
+
+    importDropLabel.textContent = fileName;
+    importCount.textContent =
+        pluralize(evenements.length, 'événement')
+        + ' à importer';
+
+    importList.replaceChildren();
+
+    for (const ev of evenements.slice(0, IMPORT_PREVIEW_COUNT)) {
+        const li = document.createElement('li');
+        const title = document.createElement('span');
+        const when = document.createElement('span');
+
+        title.className = 'import-ev-title';
+        title.textContent = ev.title;
+        when.className = 'import-ev-when';
+        when.textContent = formatImportWhen(ev);
+
+        li.append(title, when);
+        importList.append(li);
+    }
+
+    if (evenements.length > IMPORT_PREVIEW_COUNT) {
+        const li = document.createElement('li');
+
+        li.className = 'import-more';
+        li.textContent =
+            '… et '
+            + (evenements.length - IMPORT_PREVIEW_COUNT)
+            + ' de plus';
+
+        importList.append(li);
+    }
+
+    importWarnings.replaceChildren(
+        ...warnings.map((w) => {
+            const li = document.createElement('li');
+
+            li.textContent = capitalize(w) + '.';
+
+            return li;
+        })
+    );
+    importWarnings.hidden = warnings.length === 0;
+
+    importPreview.hidden = false;
+    importSubmit.disabled = false;
+    placeImportDialog();
+    importName.focus();
+    importName.select();
+}
+
+async function loadImportFile(file) {
+    importData = null;
+    importPreview.hidden = true;
+    importError.hidden = true;
+    importSubmit.disabled = true;
+
+    if (!file) {
+        return;
+    }
+
+    importDropLabel.textContent = file.name;
+
+    if (!/\.ics$/i.test(file.name) && file.type !== 'text/calendar') {
+        showImportError('Seuls les fichiers .ics sont acceptés.');
+        return;
+    }
+
+    if (file.size > IMPORT_MAX_SIZE) {
+        showImportError('Ce fichier est trop volumineux (5 Mo maximum).');
+        return;
+    }
+
+    try {
+        const parsed = IcsParser.parse(await file.text());
+
+        if (parsed.evenements.length === 0) {
+            showImportError('Ce calendrier ne contient aucun événement à importer.');
+            return;
+        }
+
+        importData = parsed;
+
+        importName.value =
+            parsed.name
+            || file.name.replace(/\.ics$/i, '').trim()
+            || 'Agenda importé';
+
+        setImportColor(parsed.color || '#3b82f6');
+
+        renderImportPreview(file.name);
+
+    } catch (err) {
+        showImportError(
+            err instanceof IcsParser.IcsError
+                ? err.message
+                : 'Lecture du fichier impossible.'
+        );
+    }
+}
+
+async function submitImport() {
+    const name = importName.value.trim();
+
+    if (!importData) {
+        return;
+    }
+
+    if (!name) {
+        importName.focus();
+        showImportError('Donnez un nom à l\'agenda.');
+        return;
+    }
+
+    importing = true;
+    importSubmit.disabled = true;
+    importSubmit.textContent = 'Import…';
+    importError.hidden = true;
+
+    try {
+        const knownIds = new Set(agendas.map((a) => a.id));
+
+        const result = await api.importAgenda(
+            name,
+            importColor.value,
+            importData.evenements
+        );
+
+        [agendas, evenements] = await Promise.all([
+            api.getAgendas(),
+            api.getEvenements()
+        ]);
+
+        const imported =
+            agendas.find((a) => a.id === result?.agenda?.id)
+            || agendas.find((a) => !knownIds.has(a.id));
+
+        if (imported) {
+            selectedAgendaIds.add(imported.id);
+        }
+
+        await refreshCalendarEvenements();
+        syncSearchAgendaOptions();
+        renderAgendaList();
+
+        const first = importData.evenements[0];
+
+        importing = false;
+        importDialog.close();
+
+        if (first) {
+            showWeekOf(new Date(first.start));
+        } else {
+            renderEvents();
+        }
+
+    } catch (err) {
+        if (err.status === 401) {
+            goToLogin();
+            return;
+        }
+
+        showImportError(
+            err.status === 404
+                ? 'L\'import n\'est pas encore disponible sur le serveur.'
+                : err.message || 'Import impossible. Réessayez.'
+        );
+
+    } finally {
+        importing = false;
+        importSubmit.textContent = 'Importer';
+        importSubmit.disabled = !importData;
+    }
+}
+
+importBtn.addEventListener('click', openImport);
+
+document
+    .getElementById('import-close')
+    .addEventListener('click', closeImport);
+
+importDialog.addEventListener('click', (event) => {
+    if (event.target === importDialog) {
+        closeImport();
+    }
+});
+
+importDialog.addEventListener('cancel', (event) => {
+    if (importing) {
+        event.preventDefault();
+    }
+});
+
+importFile.addEventListener('change', () => {
+    loadImportFile(importFile.files[0]);
+});
+
+importColor.addEventListener('input', () => {
+    setImportColor(importColor.value);
+});
+
+importForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    submitImport();
+});
+
+['dragenter', 'dragover'].forEach((type) =>
+    importDrop.addEventListener(type, (event) => {
+        event.preventDefault();
+        importDrop.classList.add('dragging');
+    })
+);
+
+['dragleave', 'drop'].forEach((type) =>
+    importDrop.addEventListener(type, () => {
+        importDrop.classList.remove('dragging');
+    })
+);
+
+importDrop.addEventListener('drop', (event) => {
+    event.preventDefault();
+    loadImportFile(event.dataTransfer.files[0]);
+});
+
+
 updateRecurrenceEndVisibility();
 
 init();
