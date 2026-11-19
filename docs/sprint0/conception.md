@@ -250,3 +250,4 @@ Le nom SQL `evenement` n'impose aucun renommage des URL `/api/evenements` du fro
 Les boutons du front utilisent ces routes pour modifier et supprimer les agendas et les événements. Après une réponse réussie, les listes et le calendrier sont actualisés. Les suppressions demandent une confirmation dans l'interface.
 
 Documentation officielle : [SQLite dans Node.js](https://nodejs.org/api/sqlite.html).
+
