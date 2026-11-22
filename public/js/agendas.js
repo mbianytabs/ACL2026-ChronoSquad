@@ -66,7 +66,10 @@ const searchInput = document.getElementById('search-input');
 const searchFilterBtn = document.getElementById('search-filter-btn');
 const searchFilters = document.getElementById('search-filters');
 const searchTitle = document.getElementById('search-title');
-const searchDate = document.getElementById('search-date');
+const searchFilterCount = document.getElementById('search-filter-count');
+const searchStartDate = document.getElementById('search-start-date');
+const searchEndDate = document.getElementById('search-end-date');
+const searchPeriodError = document.getElementById('search-period-error');
 const searchAgenda = document.getElementById('search-agenda');
 const searchLocation = document.getElementById('search-location');
 const searchResetBtn = document.getElementById('search-reset-btn');
@@ -256,20 +259,78 @@ function getSearchCriteria() {
     return {
         query: normalizeSearchText(searchInput?.value),
         title: normalizeSearchText(searchTitle?.value),
-        date: searchDate?.value || '',
+        startDate: searchStartDate?.value || '',
+        endDate: searchEndDate?.value || '',
         agendaId: searchAgenda?.value || '',
         location: normalizeSearchText(searchLocation?.value),
     };
 }
 
+// Nombre de critères actifs dans le panneau « Filtres »
+// (le texte de la barre de recherche n'en fait pas partie).
+function countActiveFilters(criteria) {
+    return [
+        criteria.title,
+        criteria.startDate || criteria.endDate,
+        criteria.agendaId,
+        criteria.location
+    ].filter(Boolean).length;
+}
+
 function hasSearchCriteria(criteria) {
-    return Boolean(
-        criteria.query
-        || criteria.title
-        || criteria.date
-        || criteria.agendaId
-        || criteria.location
+    return Boolean(criteria.query) || countActiveFilters(criteria) > 0;
+}
+
+function updateSearchFilterCount() {
+    if (!searchFilterCount) return;
+
+    const count = countActiveFilters(getSearchCriteria());
+
+    searchFilterCount.hidden = count === 0;
+    searchFilterCount.textContent = String(count);
+
+    searchFilterBtn?.setAttribute(
+        'aria-label',
+        count === 0
+            ? 'Afficher les critères de recherche'
+            : 'Afficher les critères de recherche (' + count + ' actif' + (count > 1 ? 's' : '') + ')'
     );
+}
+
+function isSearchPeriodValid(criteria) {
+    const valid = !(
+        criteria.startDate
+        && criteria.endDate
+        && criteria.startDate > criteria.endDate
+    );
+
+    if (searchPeriodError) {
+        searchPeriodError.hidden = valid;
+    }
+
+    return valid;
+}
+
+// Un rendez-vous correspond s'il chevauche la période :
+// « Du » seul = à partir de ce jour, « Au » seul = jusqu'à ce jour inclus.
+function eventInSearchPeriod(ev, criteria) {
+    const start = new Date(ev.start);
+    const end = new Date(ev.end);
+
+    if (criteria.startDate) {
+        const from = parseIsoDate(criteria.startDate);
+
+        if (start < from && end <= from) return false;
+    }
+
+    if (criteria.endDate) {
+        const to = parseIsoDate(criteria.endDate);
+        to.setDate(to.getDate() + 1);
+
+        if (start >= to) return false;
+    }
+
+    return true;
 }
 
 function eventMatchesSearch(ev, criteria) {
@@ -311,10 +372,7 @@ function eventMatchesSearch(ev, criteria) {
         return false;
     }
 
-    if (
-        criteria.date
-        && toDateInput(new Date(ev.start)) !== criteria.date
-    ) {
+    if (!eventInSearchPeriod(ev, criteria)) {
         return false;
     }
 
@@ -451,6 +509,13 @@ function renderSearchResults(matches) {
 function performSearch() {
     const criteria = getSearchCriteria();
 
+    updateSearchFilterCount();
+
+    if (!isSearchPeriodValid(criteria)) {
+        toggleSearchFilters(true);
+        return;
+    }
+
     if (!hasSearchCriteria(criteria)) {
         if (searchResults) {
             searchResults.hidden = true;
@@ -482,12 +547,41 @@ function performSearch() {
     renderSearchResults(matches);
 }
 
+// Vide uniquement les critères du panneau « Filtres » :
+// le texte recherché est conservé et la recherche est relancée.
+function resetSearchFilters() {
+    if (searchTitle) searchTitle.value = '';
+    if (searchStartDate) searchStartDate.value = '';
+    if (searchEndDate) searchEndDate.value = '';
+    if (searchAgenda) searchAgenda.value = '';
+    if (searchLocation) searchLocation.value = '';
+    if (searchPeriodError) searchPeriodError.hidden = true;
+
+    updateSearchFilterCount();
+
+    if (getSearchCriteria().query) {
+        performSearch();
+        toggleSearchFilters(true);
+    } else if (searchResults) {
+        searchResults.hidden = true;
+    }
+
+    searchStartDate?.nextElementSibling
+        ?.querySelector('.date-trigger')
+        ?.focus();
+}
+
+// Échap dans la barre : tout est effacé (texte et critères).
 function resetSearch() {
     if (searchInput) searchInput.value = '';
     if (searchTitle) searchTitle.value = '';
-    if (searchDate) searchDate.value = '';
+    if (searchStartDate) searchStartDate.value = '';
+    if (searchEndDate) searchEndDate.value = '';
     if (searchAgenda) searchAgenda.value = '';
     if (searchLocation) searchLocation.value = '';
+    if (searchPeriodError) searchPeriodError.hidden = true;
+
+    updateSearchFilterCount();
 
     if (searchResults) {
         searchResults.hidden = true;
@@ -4331,7 +4425,7 @@ if (searchSubmitBtn) {
 if (searchResetBtn) {
     searchResetBtn.addEventListener(
         'click',
-        resetSearch
+        resetSearchFilters
     );
 }
 
@@ -4359,13 +4453,21 @@ if (searchInput) {
 
 [
     searchTitle,
-    searchDate,
+    searchStartDate,
+    searchEndDate,
     searchAgenda,
     searchLocation
 ]
     .filter(Boolean)
     .forEach(
         (field) => {
+
+            // Le badge du bouton « Filtres » suit les critères saisis.
+            field.addEventListener('input', updateSearchFilterCount);
+            field.addEventListener('change', () => {
+                updateSearchFilterCount();
+                isSearchPeriodValid(getSearchCriteria());
+            });
 
             field.addEventListener(
                 'keydown',
@@ -5063,7 +5165,7 @@ function parseIsoDate(value) {
         : null;
 }
 
-function enhanceDateInput(input, { min = () => '', clearable = false } = {}) {
+function enhanceDateInput(input, { min = () => '', clearable = false, placeholder = '' } = {}) {
     const nativeValue =
         Object.getOwnPropertyDescriptor(
             HTMLInputElement.prototype,
@@ -5145,7 +5247,7 @@ function enhanceDateInput(input, { min = () => '', clearable = false } = {}) {
                 month: 'short',
                 year: 'numeric'
             }))
-            : (clearable ? 'Toutes les dates' : 'Choisir une date');
+            : (placeholder || (clearable ? 'Toutes les dates' : 'Choisir une date'));
 
         trigger.classList.toggle('placeholder', !date);
     }
@@ -5894,8 +5996,20 @@ enhanceTimeInput(tacheStart);
 enhanceTimeInput(tacheEnd, { after: () => tacheStart.value });
 enhanceDateInput(tacheRecurrenceEnd, { min: () => tacheDate.value });
 
-if (searchDate) {
-    enhanceDateInput(searchDate, { clearable: true });
+if (searchStartDate) {
+    enhanceDateInput(searchStartDate, {
+        clearable: true,
+        placeholder: 'Pas de limite'
+    });
+}
+
+if (searchEndDate) {
+    // Le calendrier « Au » grise les jours avant la date « Du ».
+    enhanceDateInput(searchEndDate, {
+        min: () => searchStartDate?.value || '',
+        clearable: true,
+        placeholder: 'Pas de limite'
+    });
 }
 
 if (searchAgenda) {

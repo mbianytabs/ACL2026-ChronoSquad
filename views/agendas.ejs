@@ -103,18 +103,78 @@
                 aria-controls="search-filters"
             >
                 Filtres
+                <span
+                    id="search-filter-count"
+                    class="search-filter-count"
+                    hidden
+                ></span>
             </button>
 
         </div>
 
 
-        <!-- FILTRES -->
+        <!-- CRITÈRES QUI AFFINENT LA RECHERCHE -->
 
         <div
             id="search-filters"
             class="search-filters"
+            role="group"
+            aria-labelledby="search-filters-title"
             hidden
         >
+
+            <div class="search-filters-head">
+                <h2 id="search-filters-title">
+                    Affiner les résultats
+                </h2>
+                <p class="search-filters-hint">
+                    Ces critères s'ajoutent au texte recherché. Tous sont facultatifs.
+                </p>
+            </div>
+
+
+            <!-- PÉRIODE -->
+            <fieldset class="search-period">
+
+                <legend>
+                    Période
+                </legend>
+
+                <div class="search-period-row">
+
+                    <div class="field">
+                        <label for="search-start-date">
+                            Du
+                        </label>
+                        <input
+                            id="search-start-date"
+                            type="date"
+                        >
+                    </div>
+
+                    <div class="field">
+                        <label for="search-end-date">
+                            Au
+                        </label>
+                        <input
+                            id="search-end-date"
+                            type="date"
+                        >
+                    </div>
+
+                </div>
+
+                <p
+                    id="search-period-error"
+                    class="error"
+                    role="alert"
+                    hidden
+                >
+                    La date de début doit précéder la date de fin.
+                </p>
+
+            </fieldset>
+
 
             <!-- TITRE -->
             <div class="field">
@@ -128,21 +188,6 @@
                     type="text"
                     placeholder="Ex. Réunion"
                     autocomplete="off"
-                >
-
-            </div>
-
-
-            <!-- DATE -->
-            <div class="field">
-
-                <label for="search-date">
-                    Date
-                </label>
-
-                <input
-                    id="search-date"
-                    type="date"
                 >
 
             </div>
@@ -190,7 +235,7 @@
                     type="button"
                     class="btn btn-glass"
                 >
-                    Réinitialiser
+                    Réinitialiser les critères
                 </button>
 
                 <button
@@ -198,7 +243,7 @@
                     type="button"
                     class="btn btn-primary"
                 >
-                    Rechercher
+                    Appliquer
                 </button>
 
             </div>
