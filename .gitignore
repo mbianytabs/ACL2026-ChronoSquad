@@ -3,3 +3,6 @@ node_modules/
 npm-debug.log*
 data/*.sqlite
 data/*.sqlite-*
+
+# npm lock file
+package-lock.json
