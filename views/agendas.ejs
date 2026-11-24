@@ -103,18 +103,78 @@
                 aria-controls="search-filters"
             >
                 Filtres
+                <span
+                    id="search-filter-count"
+                    class="search-filter-count"
+                    hidden
+                ></span>
             </button>
 
         </div>
 
 
-        <!-- FILTRES -->
+        <!-- CRITÈRES QUI AFFINENT LA RECHERCHE -->
 
         <div
             id="search-filters"
             class="search-filters"
+            role="group"
+            aria-labelledby="search-filters-title"
             hidden
         >
+
+            <div class="search-filters-head">
+                <h2 id="search-filters-title">
+                    Affiner les résultats
+                </h2>
+                <p class="search-filters-hint">
+                    Ces critères s'ajoutent au texte recherché. Tous sont facultatifs.
+                </p>
+            </div>
+
+
+            <!-- PÉRIODE -->
+            <fieldset class="search-period">
+
+                <legend>
+                    Période
+                </legend>
+
+                <div class="search-period-row">
+
+                    <div class="field">
+                        <label for="search-start-date">
+                            Du
+                        </label>
+                        <input
+                            id="search-start-date"
+                            type="date"
+                        >
+                    </div>
+
+                    <div class="field">
+                        <label for="search-end-date">
+                            Au
+                        </label>
+                        <input
+                            id="search-end-date"
+                            type="date"
+                        >
+                    </div>
+
+                </div>
+
+                <p
+                    id="search-period-error"
+                    class="error"
+                    role="alert"
+                    hidden
+                >
+                    La date de début doit précéder la date de fin.
+                </p>
+
+            </fieldset>
+
 
             <!-- TITRE -->
             <div class="field">
@@ -128,21 +188,6 @@
                     type="text"
                     placeholder="Ex. Réunion"
                     autocomplete="off"
-                >
-
-            </div>
-
-
-            <!-- DATE -->
-            <div class="field">
-
-                <label for="search-date">
-                    Date
-                </label>
-
-                <input
-                    id="search-date"
-                    type="date"
                 >
 
             </div>
@@ -190,7 +235,7 @@
                     type="button"
                     class="btn btn-glass"
                 >
-                    Réinitialiser
+                    Réinitialiser les critères
                 </button>
 
                 <button
@@ -198,7 +243,7 @@
                     type="button"
                     class="btn btn-primary"
                 >
-                    Rechercher
+                    Appliquer
                 </button>
 
             </div>
@@ -245,6 +290,10 @@
             <%= locals.user ? user.username : '' %>
         </span>
 
+        <a href="/parametres" class="btn btn-glass btn-round settings-link" aria-label="Paramètres" title="Paramètres">
+            <span aria-hidden="true">⚙</span>
+        </a>
+
         <button
             id="logout-btn"
             type="button"
@@ -266,8 +315,7 @@
 
     <aside class="sidebar glass">
 
-        <div class="sidebar-scroll">
-
+        <div class="sidebar-top">
             <button
                 id="create-btn"
                 type="button"
@@ -287,8 +335,9 @@
                     Créer
                 </span>
             </button>
+        </div>
 
-
+        <div class="sidebar-scroll">
 
             <%- include('partials/error') %>
 
@@ -1289,94 +1338,34 @@
         novalidate
     >
 
-        <div class="event-pop-head">
-
-            <span
-                class="event-pop-dot"
-                aria-hidden="true"
-            ></span>
-
-            <h2 id="import-title">Importer un agenda</h2>
-
-            <button
-                id="import-close"
-                type="button"
-                class="btn btn-glass btn-round btn-small"
-                aria-label="Fermer"
-            >
-                ×
-            </button>
-
+        <div class="settings-section-heading import-heading">
+            <span class="settings-section-icon" aria-hidden="true">↑</span>
+            <div>
+                <h2 id="import-title">Importer un agenda</h2>
+                <p>Un fichier .ics crée un nouvel agenda, sans remplacer vos données.</p>
+            </div>
+            <button id="import-close" type="button" class="btn btn-glass btn-round btn-small" aria-label="Fermer">×</button>
         </div>
 
+        <div id="import-drop" class="import-file-field">
+            <label id="import-drop-label" for="import-file">Fichier iCalendar</label>
+            <input id="import-file" type="file" accept=".ics,text/calendar" aria-describedby="import-file-help">
+        </div>
+        <p id="import-file-help" class="hint">Format .ics · 1 Mo maximum. Les événements sont vérifiés avant l’import.</p>
 
-        <label
-            id="import-drop"
-            class="import-drop"
-            for="import-file"
-        >
-            <span
-                class="import-drop-icon"
-                aria-hidden="true"
-            >📅</span>
-
-            <span id="import-drop-label">
-                Choisir un fichier .ics
-            </span>
-
-            <span class="import-drop-hint">
-                ou le glisser ici
-            </span>
-
-            <input
-                id="import-file"
-                type="file"
-                accept=".ics,text/calendar"
-                class="visually-hidden"
-            >
-        </label>
-
-
-        <div
-            id="import-preview"
-            class="import-preview"
-            hidden
-        >
-
-            <label for="import-name">
-                Nom du nouvel agenda
-            </label>
-
-            <div class="import-name-row">
-
-                <input
-                    id="import-name"
-                    type="text"
-                    maxlength="100"
-                    autocomplete="off"
-                    required
-                >
-
-                <input
-                    id="import-color"
-                    type="color"
-                    value="#3b82f6"
-                    aria-label="Couleur de l'agenda"
-                >
-
+        <div id="import-preview" hidden>
+            <div class="settings-import-fields">
+                <div>
+                    <label for="import-name">Nom de l’agenda</label>
+                    <input id="import-name" type="text" maxlength="200" autocomplete="off" required>
+                </div>
+                <div>
+                    <label for="import-color">Couleur</label>
+                    <input id="import-color" type="color" value="#3b82f6">
+                </div>
             </div>
-
-
-            <h3
-                id="import-count"
-                class="share-subtitle"
-            ></h3>
-
-            <ul
-                id="import-list"
-                class="share-list import-list"
-                aria-labelledby="import-count"
-            ></ul>
+            <p id="import-count" class="settings-preview-count"></p>
+            <ul id="import-list" class="settings-preview-list" aria-labelledby="import-count"></ul>
 
             <ul
                 id="import-warnings"
@@ -1403,7 +1392,7 @@
                 class="btn btn-primary"
                 disabled
             >
-                Importer
+                Importer l’agenda
             </button>
 
         </div>
@@ -1414,6 +1403,14 @@
 
 
 <!-- SCRIPT -->
+
+<dialog id="agenda-menu" class="event-pop agenda-actions-menu" aria-label="Actions de l'agenda">
+    <div class="event-pop-inner">
+        <button id="agenda-menu-edit" type="button">Modifier l’agenda</button>
+        <button id="agenda-menu-share" type="button">Partager l’agenda</button>
+        <button id="agenda-menu-export" type="button">Exporter en .ics</button>
+    </div>
+</dialog>
 
 <%- include('partials/scripts', { script: 'agendas.js' }) %>
 

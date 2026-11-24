@@ -191,16 +191,9 @@ const api = {
 
     previewImport: (contenu) => request('POST', '/api/agendas/import/preview', { contenu }),
 
-    exportAgenda: async (id) => {
-        const response = await fetch('/api/agendas/' + encodeURIComponent(id) + '/export', {
-            credentials: 'same-origin'
-        });
-        if (!response.ok) {
-            const data = await response.json();
-            throw new ApiError(response.status, data.error || 'Export impossible.');
-        }
-        return response.blob();
-    },
+    exportAgenda: (id) => requestFile('/api/agendas/' + encodeURIComponent(id) + '/export'),
+
+    exportAgendas: () => requestFile('/api/agendas/export'),
 
     importAgenda: (name, color, contenu) =>
         request(
@@ -213,3 +206,23 @@ const api = {
             }
         )
 };
+
+async function requestFile(url) {
+    const response = await fetch(url, { credentials: 'same-origin' });
+    if (!response.ok) {
+        const data = await response.json();
+        throw new ApiError(response.status, data.error || 'Export impossible.');
+    }
+    return response.blob();
+}
+
+function downloadFile(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
