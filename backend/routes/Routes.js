@@ -19,6 +19,7 @@ apiRouter.post("/auth/logout", requireSameOrigin, AuthController.logout);
 
 apiRouter.post("/agendas/import/preview", requireSameOrigin, requireAuth, ICalendarController.preview);
 apiRouter.post("/agendas/import", requireSameOrigin, requireAuth, ICalendarController.importer);
+apiRouter.post("/agendas/:id/import", requireSameOrigin, requireAuth, ICalendarController.importerDansAgenda);
 apiRouter.get("/agendas/:id/export", requireAuth, ICalendarController.exporter);
 apiRouter.get("/agendas/export", requireAuth, ICalendarController.exporterTous);
 apiRouter.get("/agendas", requireAuth, AgendaController.getAgendas);
@@ -31,6 +32,8 @@ apiRouter.post("/agendas/:id/partages", requireSameOrigin, requireAuth, AgendaCo
 apiRouter.delete("/agendas/:id/partages/:username", requireSameOrigin, requireAuth, AgendaController.removePartage);
 apiRouter.get("/evenements", requireAuth, EvenementController.getEvenements);
 apiRouter.post("/agendas/:agendaId/evenements", requireSameOrigin, requireAuth, EvenementController.createEvenement);
+apiRouter.post("/evenements/deplacer", requireSameOrigin, requireAuth, EvenementController.deplacerEvenements);
+apiRouter.post("/evenements/dupliquer", requireSameOrigin, requireAuth, EvenementController.dupliquerEvenements);
 apiRouter.put("/evenements/:id", requireSameOrigin, requireAuth, EvenementController.updateEvenement);
 apiRouter.delete("/evenements/:id", requireSameOrigin, requireAuth, EvenementController.deleteEvenement);
 
@@ -42,6 +45,24 @@ apiRouter.get(
     "/evenements/:id/occurrences",
     requireAuth,
     EvenementController.getOccurrences
+);
+apiRouter.put(
+    "/evenements/:id/occurrences/:occurrenceStart",
+    requireSameOrigin,
+    requireAuth,
+    EvenementController.updateOccurrence
+);
+apiRouter.delete(
+    "/evenements/:id/occurrences/:occurrenceStart",
+    requireSameOrigin,
+    requireAuth,
+    EvenementController.deleteOccurrence
+);
+apiRouter.delete(
+    "/evenements/:id/occurrences/:occurrenceStart/exception",
+    requireSameOrigin,
+    requireAuth,
+    EvenementController.restoreOccurrence
 );
 apiRouter.get(
     "/evenements/search",

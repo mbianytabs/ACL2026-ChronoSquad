@@ -50,6 +50,9 @@ const eventAgenda = document.getElementById('event-agenda');
 const eventDescription = document.getElementById('event-description');
 const eventError = document.getElementById('event-error');
 const eventDeleteBtn = document.getElementById('event-delete');
+const eventScope = document.getElementById('event-scope');
+const eventScopeLabel = document.getElementById('event-scope-label');
+const eventMainActions = document.getElementById('event-main-actions');
 
 const shareDialog = document.getElementById('share-dialog');
 const shareTitle = document.getElementById('share-title');
@@ -93,6 +96,8 @@ let selectedAgendaIds = new Set();
 let pickedAgendaIds = new Set();
 let activeCard = null;
 let shownEvent = null;
+// Identifiants (de série) des événements sélectionnés dans le calendrier.
+let selectedEventIds = new Set();
 let editing = null;
 let draft = null;
 let sharingAgenda = null;
@@ -800,6 +805,12 @@ document.getElementById('agenda-menu-export').addEventListener('click', async ()
     }
 });
 
+document.getElementById('agenda-menu-import').addEventListener('click', () => {
+    const agenda = menuAgenda;
+    agendaMenu.close();
+    openImport(agenda.id);
+});
+
 function renderAgendaList() {
     list.replaceChildren(
         ...agendas.map(
@@ -1125,78 +1136,80 @@ function updateRecurrenceEndVisibility() {
     }
 }
 
+// Période dont les occurrences des séries sont chargées : 6 mois avant et
+// 1 an après la semaine affichée (vue et recherche). Elle est rechargée
+// quand on s'approche de ses bords.
+let occurrenceRange = null;
+
+function occurrenceRangeAround(date) {
+    const week = startOfWeek(date);
+
+    return {
+        start: addDays(week, -26 * 7),
+        end: addDays(week, 52 * 7)
+    };
+}
+
+function needsOccurrenceReload() {
+    return Boolean(occurrenceRange)
+        && evenements.some((ev) => ev.recurrenceFrequency)
+        && (
+            weekStart < addDays(occurrenceRange.start, 7)
+            || addDays(weekStart, 7) > addDays(occurrenceRange.end, -7)
+        );
+}
+
 async function refreshCalendarEvenements() {
-    const expanded = [];
+    const range = occurrenceRangeAround(weekStart);
+    occurrenceRange = range;
 
-    for (const ev of evenements) {
-        if (!ev.recurrenceFrequency) {
-            expanded.push(ev);
-            continue;
-        }
+    const results = await Promise.all(
+        evenements.map(async (ev) => {
+            if (!ev.recurrenceFrequency) {
+                return [ev];
+            }
 
-        try {
-            const result =
-                await api.getOccurrences(
-                    ev.id
+            try {
+                const result = await api.getOccurrences(
+                    ev.id,
+                    range.start.toISOString(),
+                    range.end.toISOString()
                 );
 
-            const occurrences =
-                Array.isArray(result)
-                    ? result
-                    : (
-                        result
-                        &&
-                        Array.isArray(
-                            result.occurrences
-                        )
-                            ? result.occurrences
-                            : []
-                    );
+                const occurrences =
+                    result && Array.isArray(result.occurrences)
+                        ? result.occurrences
+                        : [];
 
-            if (
-                occurrences.length === 0
-            ) {
-                expanded.push(ev);
-                continue;
-            }
+                // Aucune occurrence dans la période : rien à afficher.
+                return occurrences.map((occurrence, index) => ({
+                    ...ev,
+                    start: occurrence.start,
+                    end: occurrence.end,
+                    title: occurrence.title ?? ev.title,
+                    description: occurrence.description ?? ev.description,
+                    location: occurrence.location ?? ev.location,
+                    occurrenceStart: occurrence.occurrenceStart,
+                    modified: Boolean(occurrence.modified),
+                    occurrenceIndex: index,
+                    recurringEventId: ev.id
+                }));
 
-            occurrences.forEach(
-                (
-                    occurrence,
-                    index
-                ) => {
-                    expanded.push({
-                        ...ev,
-
-                        start:
-                            occurrence.start,
-
-                        end:
-                            occurrence.end,
-
-                        occurrenceIndex:
-                            index,
-
-                        recurringEventId:
-                            ev.id
-                    });
+            } catch (err) {
+                if (err.status === 401) {
+                    goToLogin();
+                    return [];
                 }
-            );
 
-        } catch (err) {
-            if (
-                err.status === 401
-            ) {
-                goToLogin();
-                return;
+                return [ev];
             }
+        })
+    );
 
-            expanded.push(ev);
-        }
+    // Une navigation plus récente a pu relancer le chargement entre-temps.
+    if (occurrenceRange === range) {
+        calendarEvenements = results.flat();
     }
-
-    calendarEvenements =
-        expanded;
 }
 
 function renderEvents() {
@@ -1406,6 +1419,19 @@ function createEventBlock(
     block.dataset.searchEventKey =
         getSearchEventKey(ev);
 
+    block.dataset.seriesId =
+        String(seriesIdOf(ev));
+
+    block.classList.toggle(
+        'selected',
+        selectedEventIds.has(seriesIdOf(ev))
+    );
+
+    block.setAttribute(
+        'aria-pressed',
+        String(selectedEventIds.has(seriesIdOf(ev)))
+    );
+
     block.style.setProperty(
         '--agenda-color',
         agenda.color
@@ -1543,15 +1569,233 @@ function createEventBlock(
 
     block.addEventListener(
         'click',
-        () =>
+        (event) => {
+            // Ctrl/⌘/Maj + clic, ou clic simple quand une sélection
+            // est en cours : (dé)sélectionne au lieu d'ouvrir.
+            if (
+                event.ctrlKey
+                || event.metaKey
+                || event.shiftKey
+                || selectedEventIds.size > 0
+            ) {
+                toggleEventSelection(ev);
+                return;
+            }
+
             openEvent(
                 ev,
                 block
-            )
+            );
+        }
     );
 
     return block;
 }
+
+
+/* =========================================================
+   SÉLECTION MULTIPLE : DÉPLACER / DUPLIQUER
+   ---------------------------------------------------------
+   Une occurrence d'un événement récurrent représente toute
+   sa série : on sélectionne donc l'identifiant de la série.
+   ========================================================= */
+
+const selectionBar = document.getElementById('selection-bar');
+const selectionCount = document.getElementById('selection-count');
+const selectionAgenda = document.getElementById('selection-agenda');
+const selectionMoveBtn = document.getElementById('selection-move');
+const selectionCopyBtn = document.getElementById('selection-copy');
+const selectionError = document.getElementById('selection-error');
+
+let selectionBusy = false;
+
+function seriesIdOf(ev) {
+    return ev.recurringEventId || ev.id;
+}
+
+function toggleEventSelection(ev) {
+    const id = seriesIdOf(ev);
+
+    if (selectedEventIds.has(id)) selectedEventIds.delete(id);
+    else selectedEventIds.add(id);
+
+    updateSelectionUI();
+}
+
+function clearEventSelection() {
+    if (selectionBusy) {
+        return;
+    }
+
+    selectedEventIds.clear();
+    updateSelectionUI();
+}
+
+function selectedEvenements() {
+    return evenements.filter((e) => selectedEventIds.has(e.id));
+}
+
+function syncSelectionAgendaOptions() {
+    const previous = selectionAgenda.value;
+    const sources = new Set(selectedEvenements().map((e) => e.agendaId));
+
+    selectionAgenda.replaceChildren(
+        ...agendas.map((agenda) => {
+            const option = document.createElement('option');
+
+            option.value = String(agenda.id);
+            option.textContent = agenda.name;
+
+            return option;
+        })
+    );
+
+    if (agendas.some((a) => String(a.id) === previous)) {
+        selectionAgenda.value = previous;
+    } else {
+        // Par défaut : le premier agenda qui n'est pas celui des événements.
+        const other = agendas.find((a) => !sources.has(a.id)) || agendas[0];
+
+        if (other) selectionAgenda.value = String(other.id);
+    }
+}
+
+function updateSelectionUI() {
+    // Les événements supprimés entre-temps ne restent pas sélectionnés.
+    for (const id of selectedEventIds) {
+        if (!evenements.some((e) => e.id === id)) {
+            selectedEventIds.delete(id);
+        }
+    }
+
+    const selectedKeys = new Set([...selectedEventIds].map(String));
+
+    weekColumns
+        .querySelectorAll('.event[data-series-id]')
+        .forEach((block) => {
+            const on = selectedKeys.has(block.dataset.seriesId);
+
+            block.classList.toggle('selected', on);
+            block.setAttribute('aria-pressed', String(on));
+        });
+
+    const count = selectedEventIds.size;
+
+    document.body.classList.toggle('selecting-events', count > 0);
+    selectionBar.hidden = count === 0;
+
+    if (count === 0) {
+        selectionError.hidden = true;
+        return;
+    }
+
+    selectionCount.textContent =
+        pluralize(count, 'événement')
+        + ' sélectionné'
+        + (count > 1 ? 's' : '');
+
+    syncSelectionAgendaOptions();
+
+    selectionMoveBtn.disabled = selectionBusy || agendas.length === 0;
+    selectionCopyBtn.disabled = selectionBusy || agendas.length === 0;
+}
+
+async function applySelection(action) {
+    const agendaId = selectionAgenda.value;
+    const target = findAgenda(agendaId);
+    const chosen = selectedEvenements();
+
+    if (!target || chosen.length === 0 || selectionBusy) {
+        return;
+    }
+
+    // Déplacer vers l'agenda où ils se trouvent déjà ne change rien.
+    const ids = (
+        action === 'move'
+            ? chosen.filter((e) => e.agendaId !== target.id)
+            : chosen
+    ).map((e) => e.id);
+
+    if (ids.length === 0) {
+        selectionError.textContent =
+            'Ces événements sont déjà dans « ' + target.name + ' ».';
+        selectionError.hidden = false;
+        return;
+    }
+
+    selectionBusy = true;
+    selectionError.hidden = true;
+    selectionMoveBtn.disabled = true;
+    selectionCopyBtn.disabled = true;
+
+    try {
+        if (action === 'move') {
+            await api.moveEvenements(ids, target.id);
+        } else {
+            await api.copyEvenements(ids, target.id);
+        }
+
+        evenements = await api.getEvenements();
+        selectedAgendaIds.add(target.id);
+
+        await refreshCalendarEvenements();
+
+        selectionBusy = false;
+        selectedEventIds.clear();
+
+        renderAgendaList();
+        renderEvents();
+        updateSelectionUI();
+
+    } catch (err) {
+        if (err.status === 401) {
+            goToLogin();
+            return;
+        }
+
+        selectionError.textContent =
+            err.message
+            || (action === 'move'
+                ? 'Déplacement impossible. Réessayez.'
+                : 'Duplication impossible. Réessayez.');
+        selectionError.hidden = false;
+
+    } finally {
+        selectionBusy = false;
+        selectionMoveBtn.disabled = selectedEventIds.size === 0;
+        selectionCopyBtn.disabled = selectedEventIds.size === 0;
+    }
+}
+
+selectionMoveBtn.addEventListener('click', () => applySelection('move'));
+selectionCopyBtn.addEventListener('click', () => applySelection('copy'));
+
+document
+    .getElementById('selection-clear')
+    .addEventListener('click', clearEventSelection);
+
+document
+    .getElementById('event-select')
+    .addEventListener('click', () => {
+        const ev = shownEvent;
+
+        closeEvent();
+
+        if (ev && !selectedEventIds.has(seriesIdOf(ev))) {
+            toggleEventSelection(ev);
+        }
+    });
+
+document.addEventListener('keydown', (event) => {
+    if (
+        event.key === 'Escape'
+        && selectedEventIds.size > 0
+        && !document.querySelector(':popover-open')
+        && !document.querySelector('dialog[open]')
+    ) {
+        clearEventSelection();
+    }
+});
 
 function formatWhen(
     start,
@@ -1662,6 +1906,8 @@ function openEvent(
     eventDeleteBtn.hidden = false;
     document.getElementById('event-edit').hidden = false;
 
+    hideScope();
+
     disarmDelete(
         eventDeleteBtn
     );
@@ -1732,8 +1978,83 @@ function disarmDelete(button) {
         'Supprimer';
 }
 
-async function deleteShownEvent() {
+// Choix explicite pour un événement récurrent : agir sur l'occurrence
+// affichée ou sur toute la série.
+let pendingScopeAction = null;
+
+function askScope(action) {
+    pendingScopeAction = action;
+
+    eventScopeLabel.textContent =
+        action === 'delete'
+            ? 'Cet événement se répète. Que voulez-vous supprimer ?'
+            : 'Cet événement se répète. Que voulez-vous modifier ?';
+
+    eventScope.classList.toggle('danger', action === 'delete');
+    eventScope.hidden = false;
+    eventMainActions.hidden = true;
+    eventError.hidden = true;
+
+    document.getElementById('event-scope-one').focus();
+}
+
+function hideScope() {
+    pendingScopeAction = null;
+    eventScope.hidden = true;
+    eventMainActions.hidden = false;
+}
+
+async function runScopeAction(scope) {
+    const action = pendingScopeAction;
+
+    hideScope();
+
+    if (action === 'edit') {
+        editShownEvent(scope);
+    } else if (action === 'delete') {
+        await deleteShownEvent(scope);
+    }
+}
+
+function editShownEvent(scope = 'series') {
+    const ev =
+        shownEvent;
+
+    const originalEvent =
+        evenements.find(
+            (event) =>
+                event.id
+                ===
+                (
+                    ev.recurringEventId
+                    ||
+                    ev.id
+                )
+        );
+
+    closeEvent();
+
+    if (originalEvent) {
+        openEditTache(
+            originalEvent,
+            scope === 'occurrence' ? ev : null
+        );
+    }
+}
+
+// `scope` : 'occurrence' ou 'series' pour un événement récurrent.
+async function deleteShownEvent(scope = null) {
+    const recurring =
+        Boolean(shownEvent && shownEvent.recurringEventId);
+
+    if (recurring && !scope) {
+        askScope('delete');
+        return;
+    }
+
     if (
+        !recurring
+        &&
         !isArmed(
             eventDeleteBtn
         )
@@ -1758,13 +2079,25 @@ async function deleteShownEvent() {
         true;
 
     try {
-        await api.deleteEvenement(
-            eventId
-        );
+        if (scope === 'occurrence') {
+            await api.deleteOccurrence(
+                eventId,
+                ev.occurrenceStart
+            );
 
-        await removeEvenement(
-            eventId
-        );
+            await refreshCalendarEvenements();
+
+            renderEvents();
+
+        } else {
+            await api.deleteEvenement(
+                eventId
+            );
+
+            await removeEvenement(
+                eventId
+            );
+        }
 
         closeEvent();
 
@@ -1991,6 +2324,10 @@ function showWeekOf(date) {
     renderWeek();
 
     renderMini();
+
+    if (needsOccurrenceReload()) {
+        refreshCalendarEvenements().then(renderEvents);
+    }
 }
 
 function changeWeek(delta) {
@@ -2168,8 +2505,20 @@ document
 
 eventDeleteBtn.addEventListener(
     'click',
-    deleteShownEvent
+    () => deleteShownEvent()
 );
+
+document
+    .getElementById('event-scope-one')
+    .addEventListener('click', () => runScopeAction('occurrence'));
+
+document
+    .getElementById('event-scope-all')
+    .addEventListener('click', () => runScopeAction('series'));
+
+document
+    .getElementById('event-scope-cancel')
+    .addEventListener('click', hideScope);
 
 document
     .getElementById(
@@ -2178,27 +2527,10 @@ document
     .addEventListener(
         'click',
         () => {
-            const ev =
-                shownEvent;
-
-            const originalEvent =
-                evenements.find(
-                    (event) =>
-                        event.id
-                        ===
-                        (
-                            ev.recurringEventId
-                            ||
-                            ev.id
-                        )
-                );
-
-            closeEvent();
-
-            if (originalEvent) {
-                openEditTache(
-                    originalEvent
-                );
+            if (shownEvent && shownEvent.recurringEventId) {
+                askScope('edit');
+            } else {
+                editShownEvent();
             }
         }
     );
@@ -2781,13 +3113,30 @@ function openCreate({
 
     focusFirstField();
 }
-function openEditTache(ev) {
+// Une occurrence seule n'a pas sa propre récurrence ni son propre agenda.
+function setOccurrenceMode(on) {
+    tacheRecurrence.closest('.field').hidden = on;
+
+    if (on) {
+        recurrenceEndField.hidden = true;
+    }
+
+    pickerBtn.disabled = on;
+}
+
+// `occurrence` : occurrence affichée d'une série, quand on ne modifie
+// qu'elle. Le formulaire est alors prérempli avec ses valeurs et la
+// récurrence ne peut pas être changée.
+function openEditTache(ev, occurrence = null) {
     editing = {
         kind:
             'tache',
         item:
-            ev
+            ev,
+        occurrence
     };
+
+    const shown = occurrence || ev;
 
     createForm.reset();
 
@@ -2796,16 +3145,16 @@ function openEditTache(ev) {
 
     const start =
         new Date(
-            ev.start
+            shown.start
         );
 
     const end =
         new Date(
-            ev.end
+            shown.end
         );
 
     tacheTitle.value =
-        ev.title;
+        shown.title;
 
     tacheDate.value =
         toDateInput(
@@ -2828,22 +3177,24 @@ function openEditTache(ev) {
             : '23:59';
 
     tacheRecurrence.value =
-        ev.recurrenceFrequency
-        ||
-        'none';
+        occurrence
+            ? 'none'
+            : (ev.recurrenceFrequency || 'none');
 
     tacheRecurrenceEnd.value =
-        ev.recurrenceEndDate
-        ||
-        '';
+        occurrence
+            ? ''
+            : (ev.recurrenceEndDate || '');
 
     updateRecurrenceEndVisibility();
 
+    setOccurrenceMode(Boolean(occurrence));
+
     tacheLocation.value =
-        ev.location || '';
+        shown.location || '';
 
     tacheDescription.value =
-        ev.description || '';
+        shown.description || '';
 
     pickedAgendaIds =
         new Set([
@@ -3378,19 +3729,8 @@ async function submitTache() {
             )
             : null;
 
-    if (
-        recurrenceFrequency
-        &&
-        !recurrenceEndDate
-    ) {
-        showDialogError(
-            'Choisissez une date de fin pour la récurrence.'
-        );
-
-        tacheRecurrenceEnd.focus();
-
-        return false;
-    }
+    // La date de fin de récurrence est facultative : sans elle,
+    // la série se répète indéfiniment.
 
     if (
         recurrenceEndDate
@@ -3428,7 +3768,21 @@ async function submitTache() {
         recurrenceEndDate
     };
 
-    if (editing) {
+    if (editing && editing.occurrence) {
+        // Seule cette occurrence change : la série reste intacte.
+        await api.updateOccurrence(
+            editing.item.id,
+            editing.occurrence.occurrenceStart,
+            {
+                title: data.title,
+                start: data.start,
+                end: data.end,
+                location: data.location,
+                description: data.description
+            }
+        );
+
+    } else if (editing) {
         const updated =
             await api.updateEvenement(
                 editing.item.id,
@@ -3553,6 +3907,12 @@ async function deleteEditing() {
                 item.id
             );
 
+        } else if (editing.occurrence) {
+            await api.deleteOccurrence(
+                item.id,
+                editing.occurrence.occurrenceStart
+            );
+
         } else {
             await api.deleteEvenement(
                 item.id
@@ -3582,7 +3942,7 @@ async function deleteEditing() {
                 item.id
             );
 
-        } else {
+        } else if (!editing.occurrence) {
             evenements =
                 evenements.filter(
                     (e) =>
@@ -3770,6 +4130,8 @@ dialog.addEventListener(
 dialog.addEventListener(
     'close',
     () => {
+        setOccurrenceMode(false);
+
         createBtn.setAttribute(
             'aria-expanded',
             'false'
@@ -4554,13 +4916,19 @@ const importList = document.getElementById('import-list');
 const importWarnings = document.getElementById('import-warnings');
 const importError = document.getElementById('import-error');
 const importSubmit = document.getElementById('import-submit');
+const importNewFields = document.getElementById('import-new-fields');
+const importExistingField = document.getElementById('import-existing-field');
+const importAgenda = document.getElementById('import-agenda');
+const importTargetExisting = document.getElementById('import-target-existing');
+const importSelectAll = document.getElementById('import-select-all');
 
 const IMPORT_MAX_SIZE = 1024 * 1024;
-const IMPORT_PREVIEW_COUNT = 3;
 
 let importData = null;
 let importing = false;
 let importFileVersion = 0;
+// Agenda présélectionné quand l'import est ouvert depuis le menu d'un agenda.
+let importPresetAgendaId = null;
 
 function showImportError(message) {
     importError.textContent = message;
@@ -4582,12 +4950,85 @@ function resetImport() {
     importError.hidden = true;
     importSubmit.disabled = true;
     setImportColor('#3b82f6');
+    syncImportAgendaOptions();
+
+    if (importPresetAgendaId && findAgenda(importPresetAgendaId)) {
+        importTargetExisting.checked = true;
+        importAgenda.value = String(importPresetAgendaId);
+    }
+
+    updateImportTarget();
 }
 
-function openImport() {
+function openImport(agendaId = null) {
     closeCreate();
+    importPresetAgendaId = agendaId;
     resetImport();
     importDialog.showModal();
+}
+
+function isImportIntoExisting() {
+    return importTargetExisting.checked;
+}
+
+function syncImportAgendaOptions() {
+    importAgenda.replaceChildren(
+        ...agendas.map((agenda) => {
+            const option = document.createElement('option');
+
+            option.value = String(agenda.id);
+            option.textContent = agenda.name;
+
+            return option;
+        })
+    );
+
+    importTargetExisting.disabled = agendas.length === 0;
+}
+
+function updateImportTarget() {
+    const existing = isImportIntoExisting();
+
+    importNewFields.hidden = existing;
+    importExistingField.hidden = !existing;
+    importSubmit.textContent = existing
+        ? 'Importer dans l’agenda'
+        : 'Importer l’agenda';
+
+    if (existing) {
+        const agenda = findAgenda(importAgenda.value);
+
+        if (agenda) {
+            importDialog.style.setProperty('--agenda-color', agenda.color);
+        }
+    } else {
+        setImportColor(importColor.value);
+    }
+
+    updateImportSelection();
+}
+
+function updateImportSelection() {
+    if (!importData) {
+        importSubmit.disabled = true;
+        return;
+    }
+
+    const total = importData.evenements.length;
+    const count = importData.selected.size;
+
+    importCount.textContent =
+        count + ' sur ' + pluralize(total, 'événement')
+        + ' à importer';
+
+    importSelectAll.checked = total > 0 && count === total;
+    importSelectAll.indeterminate = count > 0 && count < total;
+    importSelectAll.disabled = total === 0;
+
+    importSubmit.disabled =
+        importing
+        || count === 0
+        || (isImportIntoExisting() && !importAgenda.value);
 }
 
 function closeImport() {
@@ -4631,37 +5072,32 @@ function formatImportWhen(ev) {
 function renderImportPreview(fileName) {
     const { evenements, warnings } = importData;
 
-    importCount.textContent =
-        pluralize(evenements.length, 'événement')
-        + ' à importer';
+    importList.replaceChildren(
+        ...evenements.map((ev, index) => {
+            const li = document.createElement('li');
+            const label = document.createElement('label');
+            const box = document.createElement('input');
+            const text = document.createElement('span');
+            const title = document.createElement('strong');
+            const when = document.createElement('span');
 
-    importList.replaceChildren();
+            box.type = 'checkbox';
+            box.checked = importData.selected.has(index);
+            box.dataset.index = String(index);
 
-    for (const ev of evenements.slice(0, IMPORT_PREVIEW_COUNT)) {
-        const li = document.createElement('li');
-        const title = document.createElement('strong');
-        const when = document.createElement('span');
+            text.className = 'import-ev-text';
+            title.className = 'import-ev-title';
+            title.textContent = ev.title;
+            when.className = 'import-ev-when';
+            when.textContent = formatImportWhen(ev);
 
-        title.className = 'import-ev-title';
-        title.textContent = ev.title;
-        when.className = 'import-ev-when';
-        when.textContent = formatImportWhen(ev);
+            text.append(title, when);
+            label.append(box, text);
+            li.append(label);
 
-        li.append(title, when);
-        importList.append(li);
-    }
-
-    if (evenements.length > IMPORT_PREVIEW_COUNT) {
-        const li = document.createElement('li');
-
-        li.className = 'import-more';
-        li.textContent =
-            '… et '
-            + (evenements.length - IMPORT_PREVIEW_COUNT)
-            + ' de plus';
-
-        importList.append(li);
-    }
+            return li;
+        })
+    );
 
     importWarnings.replaceChildren(
         ...warnings.map((w) => {
@@ -4675,9 +5111,12 @@ function renderImportPreview(fileName) {
     importWarnings.hidden = warnings.length === 0;
 
     importPreview.hidden = false;
-    importSubmit.disabled = false;
-    importName.focus();
-    importName.select();
+    updateImportSelection();
+
+    if (!isImportIntoExisting()) {
+        importName.focus();
+        importName.select();
+    }
 }
 
 async function loadImportFile(file) {
@@ -4706,7 +5145,13 @@ async function loadImportFile(file) {
         const contenu = await file.text();
         const parsed = await api.previewImport(contenu);
         if (version !== importFileVersion) return;
-        importData = { ...parsed, contenu, warnings: [] };
+        importData = {
+            ...parsed,
+            contenu,
+            warnings: [],
+            // Par défaut, tous les événements de l'aperçu sont cochés.
+            selected: new Set(parsed.evenements.map((_, i) => i))
+        };
 
         importName.value =
             parsed.name
@@ -4726,12 +5171,26 @@ async function loadImportFile(file) {
 
 async function submitImport() {
     const name = importName.value.trim();
+    const intoExisting = isImportIntoExisting();
+    const targetAgendaId = importAgenda.value;
 
     if (!importData) {
         return;
     }
 
-    if (!name) {
+    const selection = [...importData.selected].sort((a, b) => a - b);
+
+    if (selection.length === 0) {
+        showImportError('Sélectionnez au moins un événement à importer.');
+        return;
+    }
+
+    if (intoExisting && !findAgenda(targetAgendaId)) {
+        showImportError('Choisissez l\'agenda dans lequel importer.');
+        return;
+    }
+
+    if (!intoExisting && !name) {
         importName.focus();
         showImportError('Donnez un nom à l\'agenda.');
         return;
@@ -4745,20 +5204,28 @@ async function submitImport() {
     try {
         const knownIds = new Set(agendas.map((a) => a.id));
 
-        const result = await api.importAgenda(
-            name,
-            importColor.value,
-            importData.contenu
-        );
+        const result = intoExisting
+            ? await api.importEvenements(
+                targetAgendaId,
+                importData.contenu,
+                selection
+            )
+            : await api.importAgenda(
+                name,
+                importColor.value,
+                importData.contenu,
+                selection
+            );
 
         [agendas, evenements] = await Promise.all([
             api.getAgendas(),
             api.getEvenements()
         ]);
 
-        const imported =
-            agendas.find((a) => a.id === result?.agenda?.id)
-            || agendas.find((a) => !knownIds.has(a.id));
+        const imported = intoExisting
+            ? findAgenda(targetAgendaId)
+            : agendas.find((a) => a.id === result?.agenda?.id)
+                || agendas.find((a) => !knownIds.has(a.id));
 
         if (imported) {
             selectedAgendaIds.add(imported.id);
@@ -4768,7 +5235,7 @@ async function submitImport() {
         syncSearchAgendaOptions();
         renderAgendaList();
 
-        const first = importData.evenements[0];
+        const first = importData.evenements[selection[0]];
 
         importing = false;
         importDialog.close();
@@ -4789,12 +5256,53 @@ async function submitImport() {
 
     } finally {
         importing = false;
-        importSubmit.textContent = 'Importer l’agenda';
-        importSubmit.disabled = !importData;
+        updateImportTarget();
     }
 }
 
-importBtn.addEventListener('click', openImport);
+importBtn.addEventListener('click', () => openImport());
+
+importDialog
+    .querySelectorAll('input[name="import-target"]')
+    .forEach((radio) =>
+        radio.addEventListener('change', updateImportTarget)
+    );
+
+importAgenda.addEventListener('change', updateImportTarget);
+
+importList.addEventListener('change', (event) => {
+    const box = event.target;
+
+    if (!importData || box.dataset.index === undefined) {
+        return;
+    }
+
+    const index = Number(box.dataset.index);
+
+    if (box.checked) importData.selected.add(index);
+    else importData.selected.delete(index);
+
+    importError.hidden = true;
+    updateImportSelection();
+});
+
+importSelectAll.addEventListener('change', () => {
+    if (!importData) {
+        return;
+    }
+
+    importData.selected = importSelectAll.checked
+        ? new Set(importData.evenements.map((_, i) => i))
+        : new Set();
+
+    importList
+        .querySelectorAll('input[type="checkbox"]')
+        .forEach((box) => {
+            box.checked = importSelectAll.checked;
+        });
+
+    updateImportSelection();
+});
 
 document
     .getElementById('import-close')
@@ -6015,6 +6523,9 @@ if (searchEndDate) {
 if (searchAgenda) {
     enhanceSelect(searchAgenda);
 }
+
+enhanceSelect(importAgenda);
+enhanceSelect(selectionAgenda);
 
 
 updateRecurrenceEndVisibility();

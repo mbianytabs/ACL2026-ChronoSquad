@@ -62,7 +62,7 @@ test("tables au singulier, relations SQL, objets métier et CRUD des événement
     const db = new SQLiteDatabase(":memory:");
     try {
         assert.deepEqual(db.all("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").map(r => r.name),
-            ["agenda", "evenement", "partage", "user"]);
+            ["agenda", "evenement", "evenement_exception", "partage", "user"]);
         assert.equal(db.get("PRAGMA foreign_keys").foreign_keys, 1);
         const users = new UserRepository(db);
         const agendas = new AgendaRepository(db);

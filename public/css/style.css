@@ -2134,6 +2134,24 @@ body:has(> .home) {
     margin-top: 18px;
 }
 
+/* Événement récurrent : choix entre l'occurrence et toute la série. */
+.event-scope-label {
+    margin: 18px 0 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.event-scope .event-actions {
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.event-scope.danger #event-scope-one,
+.event-scope.danger #event-scope-all {
+    color: var(--danger);
+    background: var(--danger-bg);
+}
+
 .agenda-list li {
     display: flex;
     align-items: center;
@@ -3145,5 +3163,198 @@ select.visually-hidden {
     .clock-panel,
     .clock-panel:not(:popover-open) {
         transition: none;
+    }
+}
+
+
+/* =========================================================
+   IMPORT : DESTINATION ET CHOIX DES ÉVÉNEMENTS
+   ========================================================= */
+
+.import-target {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin: 18px 0 0;
+    padding: 0;
+    border: none;
+}
+
+.import-target legend {
+    width: 100%;
+    margin-bottom: 6px;
+    padding: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.import-target label,
+.import-select-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.import-target input,
+.import-select-all input,
+.import-check-list input {
+    accent-color: var(--agenda-color);
+}
+
+.import-existing-field {
+    margin-top: 14px;
+}
+
+.import-existing-field[hidden],
+#import-new-fields[hidden] {
+    display: none;
+}
+
+.import-select-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 20px 0 8px;
+}
+
+.import-select-bar .settings-preview-count {
+    margin: 0;
+}
+
+.import-check-list li {
+    padding: 0;
+}
+
+.import-check-list label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    margin: 0;
+    padding: 8px 2px;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.import-check-list input {
+    flex: none;
+    margin: 2px 0 0;
+}
+
+.import-check-list .import-ev-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    color: inherit;
+    flex: 1;
+}
+
+.import-check-list .import-ev-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.import-check-list .import-ev-when {
+    color: var(--muted);
+}
+
+.import-check-list li:has(input:not(:checked)) .import-ev-text {
+    opacity: 0.5;
+}
+
+
+/* =========================================================
+   SÉLECTION MULTIPLE D'ÉVÉNEMENTS
+   ========================================================= */
+
+.event.selected {
+    z-index: 2;
+    box-shadow:
+        inset 3px 0 0 var(--agenda-color),
+        0 0 0 2px var(--agenda-color),
+        0 8px 20px color-mix(in srgb, var(--agenda-color) 35%, transparent);
+}
+
+.event.selected::after {
+    content: "✓";
+    position: absolute;
+    top: 3px;
+    right: 4px;
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #ffffff;
+    background: var(--agenda-color);
+    border-radius: 50%;
+}
+
+.selecting-events .event:not(.selected) {
+    opacity: 0.7;
+}
+
+.selection-bar {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    z-index: 50;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    max-width: calc(100vw - 32px);
+    padding: 8px 10px 8px 16px;
+    border-radius: 999px;
+    transform: translateX(-50%);
+}
+
+.selection-bar[hidden] {
+    display: none;
+}
+
+.selection-count {
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.selection-target {
+    min-width: 160px;
+}
+
+.selection-bar .btn {
+    height: 36px;
+    margin: 0;
+    padding: 0 14px;
+    font-size: 0.85rem;
+}
+
+.selection-bar .btn.btn-round {
+    width: 36px;
+    padding: 0;
+}
+
+.selection-error {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 0.8rem;
+}
+
+@media (max-width: 600px) {
+    .selection-bar {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        justify-content: center;
+        border-radius: 18px;
+        transform: none;
     }
 }

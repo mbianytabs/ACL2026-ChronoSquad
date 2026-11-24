@@ -58,13 +58,15 @@ test("controller : texte et plusieurs agendas, avec isolation du propriétaire",
 test("controller : dates facultatives et occurrences réelles", async () => {
     const db = fixture();
     try {
-        assert.deepEqual(ids(await search(db, { startDate: "2026-11-05", endDate: "2026-11-05" })), ["e5", "e2"]);
+        assert.deepEqual(ids(await search(db, { startDate: "2026-11-05", endDate: "2026-11-05" })), ["e5", "e6", "e2"]);
         assert.deepEqual(ids(await search(db, { startDate: "2026-11-06", endDate: "2026-11-06" })), []);
-        assert.deepEqual(ids(await search(db, { startDate: "2026-11-11" })), ["e5"]);
+        assert.deepEqual(ids(await search(db, { startDate: "2026-11-11" })), ["e5", "e6"]);
         assert.deepEqual(ids(await search(db, { endDate: "2026-09-30" })), []);
         // Plus de 100 occurrences hebdomadaires après l'origine, sans limite arbitraire.
-        assert.deepEqual(ids(await search(db, { startDate: "2029-12-27", endDate: "2029-12-27" })), ["e5"]);
-        assert.deepEqual(ids(await search(db, { startDate: "2026-10-08", endDate: "2026-10-08", q: "sans fin" })), []);
+        assert.deepEqual(ids(await search(db, { startDate: "2029-12-27", endDate: "2029-12-27" })), ["e5", "e6"]);
+        // Une récurrence sans date de fin se répète indéfiniment.
+        assert.deepEqual(ids(await search(db, { startDate: "2026-10-08", endDate: "2026-10-08", q: "sans fin" })), ["e6"]);
+        assert.deepEqual(ids(await search(db, { startDate: "2040-10-04", endDate: "2040-10-04", q: "sans fin" })), ["e6"]);
     } finally { db.close(); }
 });
 

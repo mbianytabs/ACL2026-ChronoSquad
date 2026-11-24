@@ -1176,7 +1176,24 @@
         ></p>
 
 
-        <div class="event-actions">
+        <!-- CHOIX POUR UN ÉVÉNEMENT RÉCURRENT : cette occurrence ou toute la série -->
+        <div
+            id="event-scope"
+            class="event-scope"
+            role="group"
+            aria-labelledby="event-scope-label"
+            hidden
+        >
+            <p id="event-scope-label" class="event-scope-label"></p>
+            <div class="event-actions">
+                <button id="event-scope-cancel" type="button" class="btn btn-glass">Annuler</button>
+                <button id="event-scope-all" type="button" class="btn btn-glass">Toute la série</button>
+                <button id="event-scope-one" type="button" class="btn btn-glass">Cette occurrence</button>
+            </div>
+        </div>
+
+
+        <div id="event-main-actions" class="event-actions">
 
             <button
                 id="event-delete"
@@ -1184,6 +1201,16 @@
                 class="btn btn-danger"
             >
                 Supprimer
+            </button>
+
+
+            <button
+                id="event-select"
+                type="button"
+                class="btn btn-glass"
+                title="Sélectionner plusieurs événements (ou Ctrl/⌘ + clic)"
+            >
+                Sélectionner
             </button>
 
 
@@ -1342,7 +1369,7 @@
             <span class="settings-section-icon" aria-hidden="true">↑</span>
             <div>
                 <h2 id="import-title">Importer un agenda</h2>
-                <p>Un fichier .ics crée un nouvel agenda, sans remplacer vos données.</p>
+                <p>Ajoutez les événements d’un fichier .ics à un nouvel agenda ou à un agenda existant.</p>
             </div>
             <button id="import-close" type="button" class="btn btn-glass btn-round btn-small" aria-label="Fermer">×</button>
         </div>
@@ -1354,7 +1381,18 @@
         <p id="import-file-help" class="hint">Format .ics · 1 Mo maximum. Les événements sont vérifiés avant l’import.</p>
 
         <div id="import-preview" hidden>
-            <div class="settings-import-fields">
+            <fieldset class="import-target">
+                <legend>Importer dans</legend>
+                <label>
+                    <input type="radio" name="import-target" value="new" checked>
+                    Un nouvel agenda
+                </label>
+                <label>
+                    <input id="import-target-existing" type="radio" name="import-target" value="existing">
+                    Un agenda existant
+                </label>
+            </fieldset>
+            <div id="import-new-fields" class="settings-import-fields">
                 <div>
                     <label for="import-name">Nom de l’agenda</label>
                     <input id="import-name" type="text" maxlength="200" autocomplete="off" required>
@@ -1364,8 +1402,18 @@
                     <input id="import-color" type="color" value="#3b82f6">
                 </div>
             </div>
-            <p id="import-count" class="settings-preview-count"></p>
-            <ul id="import-list" class="settings-preview-list" aria-labelledby="import-count"></ul>
+            <div id="import-existing-field" class="import-existing-field" hidden>
+                <label for="import-agenda">Agenda</label>
+                <select id="import-agenda"></select>
+            </div>
+            <div class="import-select-bar">
+                <p id="import-count" class="settings-preview-count"></p>
+                <label class="import-select-all">
+                    <input id="import-select-all" type="checkbox" checked>
+                    Tout sélectionner
+                </label>
+            </div>
+            <ul id="import-list" class="settings-preview-list import-check-list" aria-labelledby="import-count"></ul>
 
             <ul
                 id="import-warnings"
@@ -1409,8 +1457,28 @@
         <button id="agenda-menu-edit" type="button">Modifier l’agenda</button>
         <button id="agenda-menu-share" type="button">Partager l’agenda</button>
         <button id="agenda-menu-export" type="button">Exporter en .ics</button>
+        <button id="agenda-menu-import" type="button">Importer des événements (.ics)</button>
     </div>
 </dialog>
+
+<!-- BARRE DE SÉLECTION MULTIPLE D'ÉVÉNEMENTS -->
+<div
+    id="selection-bar"
+    class="selection-bar glass"
+    role="region"
+    aria-label="Événements sélectionnés"
+    hidden
+>
+    <span id="selection-count" class="selection-count" aria-live="polite"></span>
+    <div class="selection-target">
+        <label for="selection-agenda" class="visually-hidden">Agenda de destination</label>
+        <select id="selection-agenda"></select>
+    </div>
+    <button id="selection-move" type="button" class="btn btn-glass">Déplacer</button>
+    <button id="selection-copy" type="button" class="btn btn-glass">Dupliquer</button>
+    <button id="selection-clear" type="button" class="btn btn-glass btn-round" aria-label="Annuler la sélection" title="Annuler la sélection (Échap)">×</button>
+    <p id="selection-error" class="error selection-error" role="alert" hidden></p>
+</div>
 
 <%- include('partials/scripts', { script: 'agendas.js' }) %>
 

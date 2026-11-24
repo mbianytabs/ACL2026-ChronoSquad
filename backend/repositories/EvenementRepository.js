@@ -21,6 +21,18 @@ function toEvenement(row) {
     );
 }
 
+function toException(row) {
+    return {
+        occurrenceStart: row.occurrence_start,
+        cancelled: Boolean(row.cancelled),
+        title: row.title,
+        start: row.start,
+        end: row.end,
+        location: row.location,
+        description: row.description
+    };
+}
+
 export class EvenementRepository {
     constructor(db = getDatabase()) {
         this.db = db;
@@ -149,12 +161,119 @@ export class EvenementRepository {
         return result.changes ? this.findById(id) : null;
     }
 
+    /** Change l'agenda d'un événement (série entière). Synchrone : utilisable dans une transaction. */
+    moveToAgenda(id, agendaId) {
+        this.db.run(
+            "UPDATE evenement SET agenda_id = ? WHERE id = ?",
+            [agendaId, id]
+        );
+        return toEvenement(
+            this.db.get("SELECT * FROM evenement WHERE id = ?", [id])
+        );
+    }
+
+    /** Copie un événement (et ses exceptions) dans un agenda. Synchrone : utilisable dans une transaction. */
+    duplicateToAgenda(evenement, agendaId) {
+        const copie = this.insert(new Evenement(
+            null,
+            agendaId,
+            evenement.title,
+            evenement.start,
+            evenement.end,
+            evenement.description,
+            evenement.location,
+            evenement.recurrenceFrequency,
+            evenement.recurrenceEndDate,
+            evenement.allDay
+        ), agendaId);
+        for (const exception of this.findExceptions(evenement.id)) {
+            this.saveException(copie.id, exception);
+        }
+        return copie;
+    }
+
     async delete(id) {
         return this.db.run(
             "DELETE FROM evenement WHERE id = ?",
             [id]
         ).changes > 0;
     }
+    // --- Exceptions de récurrence (occurrences supprimées ou modifiées) ---
+
+    findExceptions(evenementId) {
+        return this.findExceptionsByEvenement([evenementId]).get(evenementId) ?? [];
+    }
+
+    /** Renvoie une Map evenementId -> liste d'exceptions. */
+    findExceptionsByEvenement(evenementIds) {
+        const map = new Map();
+        const ids = [...new Set(evenementIds)];
+        // Découpage pour rester sous la limite de paramètres SQLite.
+        for (let i = 0; i < ids.length; i += 500) {
+            const lot = ids.slice(i, i + 500);
+            const rows = this.db.all(
+                `SELECT * FROM evenement_exception
+                 WHERE evenement_id IN (${lot.map(() => "?").join(", ")})
+                 ORDER BY occurrence_start`,
+                lot
+            );
+            for (const row of rows) {
+                if (!map.has(row.evenement_id)) map.set(row.evenement_id, []);
+                map.get(row.evenement_id).push(toException(row));
+            }
+        }
+        return map;
+    }
+
+    /**
+     * Enregistre la suppression (`cancelled`) ou la modification d'une
+     * occurrence, identifiée par son début d'origine.
+     */
+    saveException(evenementId, exception) {
+        this.db.run(
+            `INSERT INTO evenement_exception (
+                evenement_id, occurrence_start, cancelled,
+                title, start, end, location, description
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (evenement_id, occurrence_start) DO UPDATE SET
+                cancelled = excluded.cancelled,
+                title = excluded.title,
+                start = excluded.start,
+                end = excluded.end,
+                location = excluded.location,
+                description = excluded.description`,
+            [
+                evenementId,
+                new Date(exception.occurrenceStart).toISOString(),
+                exception.cancelled ? 1 : 0,
+                exception.cancelled ? null : exception.title,
+                exception.cancelled ? null : new Date(exception.start).toISOString(),
+                exception.cancelled ? null : new Date(exception.end).toISOString(),
+                exception.cancelled ? null : (exception.location ?? ""),
+                exception.cancelled ? null : (exception.description ?? "")
+            ]
+        );
+        return this.findExceptions(evenementId)
+            .find(e => e.occurrenceStart === new Date(exception.occurrenceStart).toISOString());
+    }
+
+    deleteException(evenementId, occurrenceStart) {
+        return this.db.run(
+            "DELETE FROM evenement_exception WHERE evenement_id = ? AND occurrence_start = ?",
+            [evenementId, new Date(occurrenceStart).toISOString()]
+        ).changes > 0;
+    }
+
+    /** Supprime les exceptions qui ne correspondent plus à une occurrence de la série. */
+    pruneExceptions(evenement, estOccurrence) {
+        for (const exception of this.findExceptions(evenement.id)) {
+            if (!estOccurrence(evenement, exception.occurrenceStart)) {
+                this.deleteException(evenement.id, exception.occurrenceStart);
+            }
+        }
+    }
+
    /**
     * Sèlectionne les èvenemnts candidats à une recherche pour un utilisateur donné
     * @param {*} ownerId Identifiant de l'utilisateur authentifié

@@ -1,5 +1,16 @@
 import ical from "ical-generator";
 import parser from "node-ical";
+import { RecurrenceService } from "./RecurrenceService.js";
+
+function formatIcsDate(date, allDay) {
+    const iso = new Date(date).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    return allDay ? iso.slice(0, 8) : iso;
+}
+
+// node-ical renvoie les journées entières à minuit heure locale.
+function jourUTC(date) {
+    return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+}
 
 function recurrenceRule(evenement) {
     const frequency = evenement.recurrenceFrequency;
@@ -25,10 +36,15 @@ function recurrenceRule(evenement) {
 }
 
 function readRecurrence(element) {
-    if (element.recurrences || element.exdate || element.rdate || element.recurrenceid) {
-        throw new Error("Les exceptions de récurrence ne sont pas prises en charge.");
+    if (element.rdate || element.recurrenceid) {
+        throw new Error("Les dates de récurrence ajoutées (RDATE) ou les occurrences isolées ne sont pas prises en charge.");
     }
-    if (!element.rrule) return { frequency: null, endDate: null };
+    if (!element.rrule) {
+        if (element.recurrences || element.exdate) {
+            throw new Error("Des exceptions de récurrence sont présentes sans règle de récurrence.");
+        }
+        return { frequency: null, endDate: null };
+    }
 
     const options = element.rrule.origOptions;
     if (element.datetype !== "date" && options.tzid && !["UTC", "Etc/UTC", "GMT"].includes(options.tzid)) {
@@ -65,23 +81,97 @@ function readRecurrence(element) {
     return { frequency, endDate };
 }
 
+/**
+ * Lit les occurrences supprimées (EXDATE) et modifiées (RECURRENCE-ID)
+ * d'une série importée. node-ical indexe chaque date deux fois.
+ */
+function readExceptions(element, allDay, serie) {
+    if (!serie.recurrenceFrequency) return [];
+    const versCle = date => (allDay && date.dateOnly ? jourUTC(date) : new Date(date)).toISOString();
+    const verifier = cle => {
+        if (!RecurrenceService.estOccurrence(serie, cle)) {
+            throw new Error("Une exception de récurrence ne correspond à aucune occurrence de la série.");
+        }
+        return cle;
+    };
+    const exceptions = new Map();
+
+    for (const date of new Set(Object.values(element.exdate ?? {}))) {
+        const cle = verifier(versCle(date));
+        exceptions.set(cle, { occurrenceStart: cle, cancelled: true });
+    }
+    for (const occurrence of new Set(Object.values(element.recurrences ?? {}))) {
+        if (!(occurrence.recurrenceid instanceof Date) || occurrence.rrule) {
+            throw new Error("Une occurrence modifiée est invalide.");
+        }
+        const cle = verifier(versCle(occurrence.recurrenceid));
+        const occAllDay = occurrence.datetype === "date";
+        if (occAllDay !== allDay) {
+            throw new Error("Une occurrence modifiée doit garder le type « journée entière » de sa série.");
+        }
+        const start = occAllDay ? jourUTC(occurrence.start) : occurrence.start;
+        const end = occAllDay ? jourUTC(occurrence.end) : occurrence.end;
+        const title = typeof occurrence.summary === "string" ? occurrence.summary.trim() : "";
+        if (!title || !(start instanceof Date) || !(end instanceof Date) ||
+            Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+            throw new Error("Une occurrence modifiée doit avoir un titre et des dates valides.");
+        }
+        exceptions.set(cle, {
+            occurrenceStart: cle,
+            cancelled: false,
+            title,
+            start: start.toISOString(),
+            end: end.toISOString(),
+            description: typeof occurrence.description === "string" ? occurrence.description : "",
+            location: typeof occurrence.location === "string" ? occurrence.location : ""
+        });
+    }
+    return [...exceptions.values()];
+}
+
 export class ICalendarService {
-    static exporter(agenda, evenements) {
+    /**
+     * `exceptions` : Map evenementId -> occurrences supprimées (EXDATE) ou
+     * modifiées (VEVENT avec RECURRENCE-ID et le même UID).
+     */
+    static exporter(agenda, evenements, exceptions = new Map()) {
         const calendrier = ical({ name: agenda.name, color: agenda.color });
 
         for (const evenement of evenements) {
             if (evenement.agendaId !== agenda.id) {
                 throw new Error("Un événement n'appartient pas à l'agenda exporté.");
             }
+            const allDay = evenement.allDay ?? false;
+            let repeating = recurrenceRule(evenement);
+            const liste = repeating ? (exceptions.get(evenement.id) ?? []) : [];
+            const supprimees = liste.filter(e => e.cancelled).map(e => formatIcsDate(e.occurrenceStart, allDay));
+            if (supprimees.length > 0) {
+                repeating = "RRULE:" + repeating + "\r\nEXDATE" + (allDay ? ";VALUE=DATE:" : ":") + supprimees.join(",");
+            }
+            const modifiees = liste.filter(e => !e.cancelled);
+            const uid = modifiees.length > 0 ? `evenement-${evenement.id}@chronosquad` : undefined;
             calendrier.createEvent({
+                ...(uid ? { id: uid } : {}),
                 start: new Date(evenement.start),
                 end: new Date(evenement.end),
                 summary: evenement.title,
                 description: evenement.description,
                 location: evenement.location,
-                allDay: evenement.allDay ?? false,
-                repeating: recurrenceRule(evenement)
+                allDay,
+                repeating
             });
+            for (const modifiee of modifiees) {
+                calendrier.createEvent({
+                    id: uid,
+                    start: new Date(modifiee.start),
+                    end: new Date(modifiee.end),
+                    summary: modifiee.title,
+                    description: modifiee.description,
+                    location: modifiee.location,
+                    allDay,
+                    recurrenceId: new Date(modifiee.occurrenceStart)
+                });
+            }
         }
 
         return calendrier.toString();
@@ -106,6 +196,12 @@ export class ICalendarService {
         for (const date of texte.matchAll(/^DT(?:START|END)(;[^:\r\n]*)?:(\d{8}T\d{6})(Z)?\r?$/gm)) {
             if (!date[3] && !date[1]?.includes("TZID=")) {
                 throw new Error("Les horaires doivent préciser UTC (Z) ou un fuseau horaire (TZID).");
+            }
+        }
+
+        for (const ligne of texte.matchAll(/^(?:EXDATE|RECURRENCE-ID)(;[^:\r\n]*)?:([^\r\n]*)$/gm)) {
+            if (/\d{8}T\d{6}(?!Z)(,|\r?$)/.test(ligne[2]) && !ligne[1]?.includes("TZID=")) {
+                throw new Error("Les exceptions de récurrence doivent préciser UTC (Z) ou un fuseau horaire (TZID).");
             }
         }
 
@@ -155,6 +251,12 @@ export class ICalendarService {
                 throw new Error("Le lieu et la description doivent être du texte.");
             }
             const recurrence = readRecurrence(element);
+            const exceptions = readExceptions(element, allDay, {
+                start: element.start,
+                end: element.end,
+                recurrenceFrequency: recurrence.frequency,
+                recurrenceEndDate: recurrence.endDate
+            });
 
             evenements.push({
                 title: element.summary.trim(),
@@ -164,10 +266,13 @@ export class ICalendarService {
                 location,
                 recurrenceFrequency: recurrence.frequency,
                 recurrenceEndDate: recurrence.endDate,
-                allDay
+                allDay,
+                ...(exceptions.length > 0 ? { exceptions } : {})
             });
         }
-        if (evenements.length !== nombreEvenements) {
+        // Les occurrences modifiées (RECURRENCE-ID) sont des VEVENT rattachés à leur série.
+        const modifiees = evenements.reduce((n, e) => n + (e.exceptions ?? []).filter(x => !x.cancelled).length, 0);
+        if (evenements.length + modifiees !== nombreEvenements) {
             throw new Error("Le fichier contient des événements incomplets ou des identifiants en doublon.");
         }
 

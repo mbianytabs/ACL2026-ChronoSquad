@@ -35,6 +35,7 @@ export class SQLiteDatabase {
             this.migrateEventRecurrence();
             this.migrateYearlyRecurrence();
             this.migrateAllDayEvents();
+            this.migrateOccurrenceExceptions();
 
             if (this.get("PRAGMA user_version").user_version >= 1) {
                 this.connection.exec("PRAGMA user_version = 3");
@@ -285,6 +286,29 @@ export class SQLiteDatabase {
         if (!columns.some(column => column.name === "all_day")) {
             this.connection.exec("ALTER TABLE evenement ADD COLUMN all_day INTEGER NOT NULL DEFAULT 0 CHECK (all_day IN (0, 1))");
         }
+    }
+
+    // Occurrences d'une série supprimées ou modifiées individuellement.
+    // Créée après les migrations qui recréent la table evenement.
+    migrateOccurrenceExceptions() {
+        this.connection.exec(`
+            CREATE TABLE IF NOT EXISTS evenement_exception (
+                evenement_id TEXT NOT NULL REFERENCES evenement(id) ON DELETE CASCADE,
+                occurrence_start TEXT NOT NULL CHECK (julianday(occurrence_start) IS NOT NULL),
+                cancelled INTEGER NOT NULL DEFAULT 0 CHECK (cancelled IN (0, 1)),
+                title TEXT,
+                start TEXT,
+                end TEXT,
+                location TEXT,
+                description TEXT,
+                PRIMARY KEY (evenement_id, occurrence_start),
+                CHECK (cancelled = 1 OR (
+                    length(trim(title)) > 0
+                    AND julianday(start) IS NOT NULL
+                    AND julianday(end) > julianday(start)
+                ))
+            ) STRICT
+        `);
     }
 
     get(sql, params = []) {

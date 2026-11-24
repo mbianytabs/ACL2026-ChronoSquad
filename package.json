@@ -9,7 +9,8 @@
     "test:server": "node --test backend/tests/ServerTest.js",
     "test:storage": "node --test backend/tests/SQLiteTest.js",
     "test:auth": "node --test backend/tests/AuthTest.js",
-    "test": "node --test backend/tests/ServerTest.js backend/tests/SQLiteTest.js backend/tests/AuthTest.js"
+    "test:recurrence": "node --test backend/tests/RecurrenceRoutesTest.js",
+    "test": "node --test backend/tests/ServerTest.js backend/tests/SQLiteTest.js backend/tests/AuthTest.js backend/tests/RecurrenceRoutesTest.js"
   },
   "engines": {
     "node": ">=22.13.0"

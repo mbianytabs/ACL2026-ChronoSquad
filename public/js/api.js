@@ -174,12 +174,37 @@ const api = {
             data
         ),
 
-    getOccurrences: (id) =>
+    // Occurrences d'une série sur la période [start, end[ (dates ISO).
+    getOccurrences: (id, start, end) =>
         request(
             'GET',
             '/api/evenements/'
             + encodeURIComponent(id)
             + '/occurrences'
+            + (start && end
+                ? '?' + new URLSearchParams({ start, end })
+                : '')
+        ),
+
+    // Modifie une seule occurrence (identifiée par son début d'origine).
+    updateOccurrence: (id, occurrenceStart, data) =>
+        request(
+            'PUT',
+            '/api/evenements/'
+            + encodeURIComponent(id)
+            + '/occurrences/'
+            + encodeURIComponent(occurrenceStart),
+            data
+        ),
+
+    // Supprime une seule occurrence de la série.
+    deleteOccurrence: (id, occurrenceStart) =>
+        request(
+            'DELETE',
+            '/api/evenements/'
+            + encodeURIComponent(id)
+            + '/occurrences/'
+            + encodeURIComponent(occurrenceStart)
         ),
 
     deleteEvenement: (id) =>
@@ -195,14 +220,51 @@ const api = {
 
     exportAgendas: () => requestFile('/api/agendas/export'),
 
-    importAgenda: (name, color, contenu) =>
+    // selection : indices (dans `evenements` de l'aperçu) des événements à importer.
+    importAgenda: (name, color, contenu, selection) =>
         request(
             'POST',
             '/api/agendas/import',
             {
                 name,
                 color,
-                contenu
+                contenu,
+                selection
+            }
+        ),
+
+    // Import d'un .ics dans un agenda déjà existant.
+    importEvenements: (agendaId, contenu, selection) =>
+        request(
+            'POST',
+            '/api/agendas/'
+            + encodeURIComponent(agendaId)
+            + '/import',
+            {
+                contenu,
+                selection
+            }
+        ),
+
+    // Déplace plusieurs événements (séries entières) vers un autre agenda.
+    moveEvenements: (ids, agendaId) =>
+        request(
+            'POST',
+            '/api/evenements/deplacer',
+            {
+                ids,
+                agendaId
+            }
+        ),
+
+    // Duplique plusieurs événements (séries entières) dans un autre agenda.
+    copyEvenements: (ids, agendaId) =>
+        request(
+            'POST',
+            '/api/evenements/dupliquer',
+            {
+                ids,
+                agendaId
             }
         )
 };
