@@ -684,6 +684,19 @@ body:has(> .home) {
     padding: 0 16px 16px;
 }
 
+.home[data-calendar-state] :is(.sidebar-top, .mini-cal, .agenda-groups, .week-body, #calendar-hint),
+body:has(> .home[data-calendar-state]) > .topbar :is(.week-nav, .search-area) {
+    visibility: hidden;
+}
+
+.home[data-calendar-state] #calendar-hint {
+    opacity: 0;
+}
+
+.home:not([data-calendar-state="loading"]) .calendar-loading {
+    display: none;
+}
+
 .sidebar {
     display: flex;
     flex-direction: column;

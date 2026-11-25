@@ -3,6 +3,7 @@ const logoutBtn = document.getElementById('logout-btn');
 const ownAgendaList = document.getElementById('own-agenda-list');
 const sharedAgendaList = document.getElementById('shared-agenda-list');
 const calendarHint = document.getElementById('calendar-hint');
+const calendarHome = document.querySelector('.home');
 const emptyOwnAgendas = document.getElementById('empty-own-agendas');
 const emptySharedAgendas = document.getElementById('empty-shared-agendas');
 const errorBox = document.getElementById('error');
@@ -2462,6 +2463,7 @@ async function init() {
 
         renderEvents();
 
+        delete calendarHome.dataset.calendarState;
     } catch (err) {
         if (
             err.status === 401
@@ -2469,6 +2471,7 @@ async function init() {
             goToLogin();
 
         } else {
+            calendarHome.dataset.calendarState = 'error';
             showError(
                 'Chargement impossible. Rechargez la page.'
             );
