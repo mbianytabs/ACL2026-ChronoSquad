@@ -1926,6 +1926,14 @@ function formatWhen(
     );
 }
 
+function positionEventDialog() {
+    if (eventDialog.open && activeCard?.isConnected) {
+        placePopover(eventDialog, activeCard);
+    }
+}
+
+const eventDialogResize = new ResizeObserver(positionEventDialog);
+
 function openEvent(
     ev,
     card
@@ -1997,11 +2005,8 @@ function openEvent(
     );
 
     eventDialog.showModal();
-
-    placePopover(
-        eventDialog,
-        card
-    );
+    positionEventDialog();
+    eventDialogResize.observe(eventDialog);
 }
 
 function closeEvent() {
@@ -2702,8 +2707,14 @@ eventDialog.addEventListener(
 
 eventDialog.addEventListener(
     'close',
-    clearActiveCard
+    () => {
+        if (eventDialog.open) return;
+        eventDialogResize.disconnect();
+        clearActiveCard();
+    }
 );
+
+window.addEventListener('resize', positionEventDialog);
 
 weekColumns.addEventListener(
     'click',
