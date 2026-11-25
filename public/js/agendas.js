@@ -1,8 +1,10 @@
 const userLabel = document.getElementById('current-user');
 const logoutBtn = document.getElementById('logout-btn');
-const list = document.getElementById('agenda-list');
+const ownAgendaList = document.getElementById('own-agenda-list');
+const sharedAgendaList = document.getElementById('shared-agenda-list');
 const calendarHint = document.getElementById('calendar-hint');
-const emptyMessage = document.getElementById('empty');
+const emptyOwnAgendas = document.getElementById('empty-own-agendas');
+const emptySharedAgendas = document.getElementById('empty-shared-agendas');
 const errorBox = document.getElementById('error');
 const createBtn = document.getElementById('create-btn');
 const weekLabel = document.getElementById('week-label');
@@ -868,14 +870,18 @@ document.getElementById('agenda-menu-import').addEventListener('click', () => {
 });
 
 function renderAgendaList() {
-    list.replaceChildren(
-        ...agendas.map(
-            createAgendaRow
-        )
-    );
+    const ownRows = [];
+    const sharedRows = [];
 
-    emptyMessage.hidden =
-        agendas.length > 0;
+    for (const agenda of agendas) {
+        const rows = isSharedAgenda(agenda) ? sharedRows : ownRows;
+        rows.push(createAgendaRow(agenda));
+    }
+
+    ownAgendaList.replaceChildren(...ownRows);
+    sharedAgendaList.replaceChildren(...sharedRows);
+    emptyOwnAgendas.hidden = ownRows.length > 0;
+    emptySharedAgendas.hidden = sharedRows.length > 0;
 
     updateCalendarHint();
 }

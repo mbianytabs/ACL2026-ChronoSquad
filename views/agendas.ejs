@@ -402,32 +402,29 @@
 
             <!-- LISTE DES AGENDAS -->
 
-            <section class="agenda-section">
-
-                <h2 class="section-title">
-                    Mes agendas
-                </h2>
-
-                <div class="agenda-list-wrap">
-
+            <div class="agenda-groups">
+                <section class="agenda-section">
+                    <h2 id="own-agendas-title" class="section-title">Mes agendas</h2>
                     <ul
-                        id="agenda-list"
+                        id="own-agenda-list"
                         class="agenda-list"
-                        aria-label="Agendas affichés"
+                        role="list"
+                        aria-labelledby="own-agendas-title"
                     ></ul>
+                    <p id="empty-own-agendas" class="hint" hidden>Aucun agenda personnel.</p>
+                </section>
 
-                </div>
-
-                <p
-                    id="empty"
-                    class="hint"
-                    hidden
-                >
-                    Aucun agenda pour l'instant.
-                    Appuyez sur Créer pour en ajouter un.
-                </p>
-
-            </section>
+                <section class="agenda-section">
+                    <h2 id="shared-agendas-title" class="section-title">Agendas partagés</h2>
+                    <ul
+                        id="shared-agenda-list"
+                        class="agenda-list"
+                        role="list"
+                        aria-labelledby="shared-agendas-title"
+                    ></ul>
+                    <p id="empty-shared-agendas" class="hint" hidden>Aucun agenda partagé.</p>
+                </section>
+            </div>
 
         </div>
 

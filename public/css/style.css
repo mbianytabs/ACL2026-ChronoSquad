@@ -845,8 +845,10 @@ body:has(> .home) {
     }
 }
 
-.agenda-list-wrap {
-    position: relative;
+.agenda-section + .agenda-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
 }
 
 .agenda-list {
@@ -893,7 +895,7 @@ body:has(> .home) {
     transform: scale(0.98);
 }
 
-.agenda-list:has(.agenda-check:checked) .agenda-item:not(:has(.agenda-check:checked)) {
+.agenda-groups:has(.agenda-check:checked) .agenda-item:not(:has(.agenda-check:checked)) {
     color: var(--muted);
 }
 
