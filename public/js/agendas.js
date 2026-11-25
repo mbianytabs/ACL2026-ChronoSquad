@@ -93,6 +93,7 @@ let agendas = [];
 let evenements = [];
 let calendarEvenements = [];
 let selectedAgendaIds = new Set();
+let calendarStateKey = null;
 let pickedAgendaIds = new Set();
 let activeCard = null;
 let shownEvent = null;
@@ -147,6 +148,61 @@ function toDateInput(date) {
         + '-'
         + pad(date.getDate())
     );
+}
+
+function restoreCalendarState() {
+    const key = 'chronosquad.calendar.' + currentUser.id;
+    let state = history.state?.[key];
+
+    if (!state) {
+        try {
+            state = JSON.parse(localStorage.getItem(key));
+        } catch {
+            // Le calendrier reste utilisable si le stockage est indisponible.
+        }
+    }
+
+    const savedWeek = parseIsoDate(state?.weekStart);
+    const savedMonth = parseIsoDate(state?.miniMonth);
+    if (savedWeek && toDateInput(savedWeek) === state.weekStart) {
+        weekStart = startOfWeek(savedWeek);
+    }
+    if (savedMonth && toDateInput(savedMonth) === state.miniMonth) {
+        miniMonth = new Date(savedMonth.getFullYear(), savedMonth.getMonth(), 1);
+    }
+    if (Array.isArray(state?.agendaIds)) {
+        const savedIds = new Set(state.agendaIds);
+        selectedAgendaIds = new Set(
+            agendas.map(agenda => agenda.id).filter(id => savedIds.has(id))
+        );
+    }
+
+    calendarStateKey = key;
+    saveCalendarState({ rememberForLogin: false });
+}
+
+function saveCalendarState({ rememberForLogin = true } = {}) {
+    if (!calendarStateKey) return;
+
+    const state = {
+        weekStart: toDateInput(weekStart),
+        miniMonth: toDateInput(miniMonth),
+        agendaIds: [...selectedAgendaIds]
+    };
+
+    try {
+        history.replaceState({ [calendarStateKey]: state }, '');
+    } catch {
+        // Certaines navigations limitent les écritures dans l'historique.
+    }
+
+    if (!rememberForLogin) return;
+
+    try {
+        localStorage.setItem(calendarStateKey, JSON.stringify(state));
+    } catch {
+        // Le stockage peut être bloqué par le navigateur.
+    }
 }
 
 function toTimeInput(date) {
@@ -835,6 +891,8 @@ function toggleAgenda(
     } else {
         selectedAgendaIds.delete(id);
     }
+
+    saveCalendarState();
 
     updateCalendarHint();
 
@@ -1737,6 +1795,7 @@ async function applySelection(action) {
 
         evenements = await api.getEvenements();
         selectedAgendaIds.add(target.id);
+        saveCalendarState();
 
         await refreshCalendarEvenements();
 
@@ -2321,6 +2380,8 @@ function showWeekOf(date) {
             1
         );
 
+    saveCalendarState();
+
     renderWeek();
 
     renderMini();
@@ -2341,10 +2402,6 @@ function changeWeek(delta) {
 
 async function init() {
     renderHours();
-
-    showWeekOf(
-        today
-    );
 
     weekBody.scrollTop =
         Math.max(
@@ -2387,6 +2444,10 @@ async function init() {
                 api.getAgendas(),
                 api.getEvenements()
             ]);
+
+        restoreCalendarState();
+        renderWeek();
+        renderMini();
 
         await refreshCalendarEvenements();
 
@@ -2472,6 +2533,7 @@ document
                     1
                 );
 
+            saveCalendarState();
             renderMini();
         }
     );
@@ -2490,6 +2552,7 @@ document
                     1
                 );
 
+            saveCalendarState();
             renderMini();
         }
     );
@@ -3941,6 +4004,7 @@ async function deleteEditing() {
             selectedAgendaIds.delete(
                 item.id
             );
+            saveCalendarState();
 
         } else if (!editing.occurrence) {
             evenements =
@@ -5243,6 +5307,7 @@ async function submitImport() {
         if (first) {
             showWeekOf(new Date(first.start));
         } else {
+            saveCalendarState();
             renderEvents();
         }
 
