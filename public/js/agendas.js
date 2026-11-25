@@ -1227,8 +1227,17 @@ async function refreshCalendarEvenements() {
     const range = occurrenceRangeAround(weekStart);
     occurrenceRange = range;
 
+    const expanded = await loadCalendarEvenements(evenements, range);
+
+    // Une navigation plus récente a pu relancer le chargement entre-temps.
+    if (occurrenceRange === range) {
+        calendarEvenements = expanded;
+    }
+}
+
+async function loadCalendarEvenements(events, range, { strict = false } = {}) {
     const results = await Promise.all(
-        evenements.map(async (ev) => {
+        events.map(async (ev) => {
             if (!ev.recurrenceFrequency) {
                 return [ev];
             }
@@ -1260,6 +1269,7 @@ async function refreshCalendarEvenements() {
                 }));
 
             } catch (err) {
+                if (strict) throw err;
                 if (err.status === 401) {
                     goToLogin();
                     return [];
@@ -1270,10 +1280,7 @@ async function refreshCalendarEvenements() {
         })
     );
 
-    // Une navigation plus récente a pu relancer le chargement entre-temps.
-    if (occurrenceRange === range) {
-        calendarEvenements = results.flat();
-    }
+    return results.flat();
 }
 
 function renderEvents() {
@@ -2406,6 +2413,73 @@ function changeWeek(delta) {
     );
 }
 
+const SHARED_CALENDAR_REFRESH_MS = 10_000;
+let refreshingSharedCalendar = false;
+
+function canRefreshSharedCalendar() {
+    return !document.hidden
+        && !draft
+        && !selectionBusy
+        && !document.querySelector('dialog[open]');
+}
+
+async function refreshSharedCalendar() {
+    if (refreshingSharedCalendar || !canRefreshSharedCalendar()) return;
+    refreshingSharedCalendar = true;
+
+    const week = weekStart;
+    const range = occurrenceRange;
+    const previousAgendas = JSON.stringify(agendas);
+    const previousEvents = JSON.stringify(evenements);
+    const stillCurrent = () => canRefreshSharedCalendar()
+        && week === weekStart
+        && range === occurrenceRange
+        && previousAgendas === JSON.stringify(agendas)
+        && previousEvents === JSON.stringify(evenements);
+
+    try {
+        const [nextAgendas, fetchedEvents] = await Promise.all([
+            api.getAgendas(),
+            api.getEvenements()
+        ]);
+        const accessibleIds = new Set(nextAgendas.map(agenda => agenda.id));
+        const nextEvents = fetchedEvents.filter(event => accessibleIds.has(event.agendaId));
+        const agendasChanged = JSON.stringify(nextAgendas) !== previousAgendas;
+        const eventsChanged = JSON.stringify(nextEvents) !== previousEvents;
+        if ((!agendasChanged && !eventsChanged) || !stillCurrent()) return;
+
+        if (eventsChanged) {
+            const nextRange = occurrenceRangeAround(week);
+            const expanded = await loadCalendarEvenements(nextEvents, nextRange, { strict: true });
+            if (!stillCurrent()) return;
+            evenements = nextEvents;
+            calendarEvenements = expanded;
+            occurrenceRange = nextRange;
+        }
+        agendas = nextAgendas;
+
+        let selectionChanged = false;
+        for (const id of selectedAgendaIds) {
+            if (!accessibleIds.has(id)) {
+                selectedAgendaIds.delete(id);
+                selectionChanged = true;
+            }
+        }
+        if (selectionChanged) saveCalendarState({ rememberForLogin: false });
+
+        if (agendasChanged) syncSearchAgendaOptions();
+        renderAgendaList();
+        renderEvents();
+        updateSelectionUI();
+        if (searchResults && !searchResults.hidden) performSearch();
+    } catch (err) {
+        if (err.status === 401) goToLogin();
+        // Garder l'affichage actuel en cas d'erreur temporaire et réessayer au prochain cycle.
+    } finally {
+        refreshingSharedCalendar = false;
+    }
+}
+
 async function init() {
     renderHours();
 
@@ -2464,6 +2538,8 @@ async function init() {
         renderEvents();
 
         delete calendarHome.dataset.calendarState;
+        setInterval(refreshSharedCalendar, SHARED_CALENDAR_REFRESH_MS);
+        document.addEventListener('visibilitychange', refreshSharedCalendar);
     } catch (err) {
         if (
             err.status === 401

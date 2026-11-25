@@ -154,7 +154,7 @@ const api = {
     getEvenements: () =>
         request(
             'GET',
-            '/api/evenements'
+            '/api/evenements?includeOccurrenceRevisions=1'
         ),
 
     createEvenement: (agendaId, data) =>

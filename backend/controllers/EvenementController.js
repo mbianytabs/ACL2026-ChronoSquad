@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import createError from "http-errors";
 import { Evenement } from "../models/Evenement.js";
 import { AgendaRepository } from "../repositories/AgendaRepository.js";
@@ -205,7 +206,21 @@ function occurrenceJSON(occurrence, evenementId) {
 export class EvenementController {
     static async getEvenements(req, res) {
         const evenements = new EvenementRepository(req.app.locals.database);
-        res.json(await evenements.findAccessible(req.user.id));
+        const accessibles = await evenements.findAccessible(req.user.id);
+        if (req.query.includeOccurrenceRevisions !== "1") {
+            return res.json(accessibles);
+        }
+
+        const exceptions = evenements.findExceptionsByEvenement(
+            accessibles.filter(evenement => evenement.recurrenceFrequency).map(evenement => evenement.id)
+        );
+        res.json(accessibles.map(evenement => {
+            if (!evenement.recurrenceFrequency) return evenement;
+            const occurrenceRevision = createHash("sha256")
+                .update(JSON.stringify(exceptions.get(evenement.id) ?? []))
+                .digest("base64url");
+            return { ...evenement.toJSON(), occurrenceRevision };
+        }));
     }
 
     static async createEvenement(req, res) {
