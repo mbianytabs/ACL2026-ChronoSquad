@@ -1344,6 +1344,10 @@ body:has(> .home) {
         display 440ms allow-discrete;
 }
 
+.share-pop {
+    width: 360px;
+}
+
 .event-pop[data-side="left"] {
     transform-origin: right top;
 }
@@ -2271,10 +2275,6 @@ body:has(> .home) {
     outline-offset: 2px;
 }
 
-
-.share-pop {
-    width: 360px;
-}
 
 .share-form {
     display: flex;

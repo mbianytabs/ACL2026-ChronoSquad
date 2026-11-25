@@ -814,6 +814,7 @@ function createAgendaRow(agenda) {
 
     const more = document.createElement('button');
     more.type = 'button';
+    more.id = 'agenda-actions-' + agenda.id;
     more.className = 'agenda-edit agenda-more';
     more.textContent = '⋮';
     more.title = 'Actions de l’agenda';
@@ -827,11 +828,9 @@ function createAgendaRow(agenda) {
 
 const agendaMenu = document.getElementById('agenda-menu');
 let menuAgenda = null;
-let menuAnchor = null;
 
 function openAgendaMenu(agenda, anchor) {
     menuAgenda = agenda;
-    menuAnchor = anchor;
     agendaMenu.style.setProperty('--agenda-color', agenda.color);
     document.getElementById('agenda-menu-share').hidden = !isOwnAgenda(agenda);
     agendaMenu.showModal();
@@ -849,7 +848,7 @@ document.getElementById('agenda-menu-edit').addEventListener('click', () => {
 
 document.getElementById('agenda-menu-share').addEventListener('click', () => {
     agendaMenu.close();
-    openShare(menuAgenda, menuAnchor);
+    openShare(menuAgenda);
 });
 
 document.getElementById('agenda-menu-export').addEventListener('click', async () => {
@@ -4268,10 +4267,17 @@ createForm.addEventListener(
     }
 );
 
-function openShare(
-    agenda,
-    anchor
-) {
+function positionShareDialog() {
+    if (!shareDialog.open || !sharingAgenda) return;
+
+    // La liste recrée le bouton lorsque les informations de partage changent.
+    const anchor = document.getElementById('agenda-actions-' + sharingAgenda.id);
+    if (anchor) placePopover(shareDialog, anchor);
+}
+
+const shareDialogResize = new ResizeObserver(positionShareDialog);
+
+function openShare(agenda) {
     sharingAgenda =
         agenda;
 
@@ -4304,10 +4310,8 @@ function openShare(
 
     shareDialog.showModal();
 
-    placePopover(
-        shareDialog,
-        anchor
-    );
+    positionShareDialog();
+    shareDialogResize.observe(shareDialog);
 
     shareUsername.focus();
 
@@ -4830,10 +4834,13 @@ shareDialog.addEventListener(
 shareDialog.addEventListener(
     'close',
     () => {
+        shareDialogResize.disconnect();
         sharingAgenda =
             null;
     }
 );
+
+window.addEventListener('resize', positionShareDialog);
 
 
 /* =========================================================
